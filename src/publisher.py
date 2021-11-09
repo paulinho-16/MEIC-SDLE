@@ -5,24 +5,29 @@ from string import ascii_uppercase as uppercase
 from threading import Thread
 
 import zmq
-from zhelpers import *
 
 from zmq.devices import monitored_queue
 from random import randrange
 
 class Server:
     def __init__(self):
-        self.topics = {}
-
         self.connect()
        
     def connect(self):
         self.ctx = zmq.Context()
         self.socket = self.ctx.socket(zmq.PUB)
-        self.socket.bind("tcp://*:6000")
+        self.socket.connect("tcp://127.0.0.1:6000")
 
     def update(self):
-        while True:
+        i = 0
+        while i < 20:
+            """
+            Envio do tópico correto
+            Para já só está a enviar random ints para garantir a comunicação
+
+            Gerir aqui a escolha e envio do Tópico
+            """
+            i += 1
             string = "%s-%05d" % (uppercase[randint(0,10)], randint(0,100000))
             try:
                 self.socket.send(string.encode('utf-8'))
