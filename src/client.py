@@ -5,7 +5,7 @@ from message import Message
 
 class Client:
     def __init__(self):
-        self.id = 0
+        self.client_id = 2
         self.ctx = zmq.Context()
         self.socket = self.ctx.socket(zmq.SUB)
         self.topic_list = []
@@ -21,17 +21,21 @@ class Client:
         snapshot = self.ctx.socket(zmq.DEALER)
         #snapshot.linger = 0
         snapshot.connect("tcp://127.0.0.1:5556")
-        snapshot.send_string("Hello?")
+        snapshot.send_string("GETSNAP")
 
         while True:
             try:
-                print(1)
-                msg = Message.recv(snapshot)
-            except:
-                print(2)
+                key, seq_s, message = snapshot.recv_multipart()
+                print(key)
+            except Exception as e:
+                print(f"Error: {str(e)}")
                 break;          # Interrupted
 
-            print(3)
+            if key == b"ENDSNAP":
+                print("Received snapshot")
+                break
+            
+            #store
 
     def subscribe(self, topic): 
         print("Collecting updates from a given topic server...")

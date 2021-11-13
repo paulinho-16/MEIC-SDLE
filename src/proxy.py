@@ -93,25 +93,23 @@ class Proxy:
             print(4)
             print(items)
             if snapshot in items:
-                msg = snapshot.recv()
+                msg = snapshot.recv_multipart()
                 print(msg)
 
                 identity = msg[0]
                 request = msg[1]
-                print("before")
-                print(identity)
-                print("after")
-                """
-                if request == b"Hello?":
+
+                if request == b"GETSNAP":
                     pass
                 else:
                     print("E: bad request, aborting\n")
                     break
-                """
-            
-                #msg = Message("key", "value")
-                
-                snapshot.send(b"identity", zmq.SNDMORE)
+
+                snapshot.send(identity, zmq.SNDMORE)
+                msg = Message(sequence)
+                msg.key = b"ENDSNAP"
+                msg.body = b""
+                msg.send(snapshot)
 
                 """
                 # For each entry in kvmap, send kvmsg to client

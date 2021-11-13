@@ -20,7 +20,7 @@ class Server:
 
     def update(self):
         i = 0
-        while i < 20:
+        while True:
             """
             Envio do tópico correto
             Para já só está a enviar random ints para garantir a comunicação
