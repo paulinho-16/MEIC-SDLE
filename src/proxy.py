@@ -3,6 +3,8 @@ import sys
 from random import randint
 from string import ascii_uppercase as uppercase
 from threading import Thread
+import threading
+from message import Message
 
 import zmq
 
@@ -32,6 +34,15 @@ def zpipe(ctx):
     b.connect(iface)
     return a,b
 
+def send_single(key, kvmsg, route):
+    """Send one state snapshot key-value pair to a socket
+
+    Hash item data is our kvmsg object, ready to send
+    """
+    # Send identity of recipient first
+    route.socket.send(route.identity, zmq.SNDMORE)
+    kvmsg.send(route.socket)
+    
 class Proxy:
     def __init__(self):
         self.IP = "127.0.0.1"
@@ -43,6 +54,7 @@ class Proxy:
 
         self.__init_backend()
         self.__init_frontend()
+        self.__init_snapshot()
 
     def __init_backend(self):
         self.backend = self.ctx.socket(zmq.XPUB)
@@ -52,6 +64,69 @@ class Proxy:
         self.frontend = self.ctx.socket(zmq.XSUB)
         self.frontend.bind(f"tcp://{self.IP}:{self.FRONTEND_PORT}")
     
+    def __init_snapshot(self):
+        updates, peer = zpipe(self.ctx)
+
+        manager_thread = threading.Thread(target=self.state_manager, args=(self.ctx,peer))
+        manager_thread.daemon=True
+        manager_thread.start()
+
+    def state_manager(self, ctx, pipe):
+        pipe.send_string("READY")
+        snapshot = ctx.socket(zmq.ROUTER)
+        snapshot.bind("tcp://*:5556")
+
+        poller = zmq.Poller()
+        poller.register(snapshot, zmq.POLLIN)
+        poller.register(pipe, zmq.POLLIN)
+
+        sequence = 0       # Current snapshot version number
+        while True:
+            print(1)
+            try:
+                print(2)
+                items = dict(poller.poll())
+            except (zmq.ZMQError, KeyboardInterrupt):
+                print(3)
+                break # interrupt/context shutdown
+
+            print(4)
+            print(items)
+            if snapshot in items:
+                msg = snapshot.recv()
+                print(msg)
+
+                identity = msg[0]
+                request = msg[1]
+                print("before")
+                print(identity)
+                print("after")
+                """
+                if request == b"Hello?":
+                    pass
+                else:
+                    print("E: bad request, aborting\n")
+                    break
+                """
+            
+                #msg = Message("key", "value")
+                
+                snapshot.send(b"identity", zmq.SNDMORE)
+
+                """
+                # For each entry in kvmap, send kvmsg to client
+                for k,v in kvmap.items():
+                    send_single(k,v,route)
+
+                # Now send END message with sequence number
+                print(f"Sendig state shapshot={sequence}\n")
+                snapshot.send(identity, zmq.SNDMORE)
+                kvmsg = KVMsg(sequence)
+                kvmsg.key = "KTHXBAI"
+                kvmsg.body = ""
+                kvmsg.send(snapshot)
+                """
+
     #def poller(self):
         #poller = zmq.Poller()
         #poller.register(self.frontend, zmq.POLLIN)

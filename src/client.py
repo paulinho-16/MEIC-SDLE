@@ -1,6 +1,7 @@
 import sys
 import zmq
-from common import Topic
+import threading
+from message import Message
 
 class Client:
     def __init__(self):
@@ -11,6 +12,26 @@ class Client:
         
         self.subscribe("A")
         self.subscribe("B")
+
+        manager_thread = threading.Thread(target=self.__init_snapshot, args=())
+        manager_thread.daemon=True
+        manager_thread.start()
+
+    def __init_snapshot(self):
+        snapshot = self.ctx.socket(zmq.DEALER)
+        #snapshot.linger = 0
+        snapshot.connect("tcp://127.0.0.1:5556")
+        snapshot.send_string("Hello?")
+
+        while True:
+            try:
+                print(1)
+                msg = Message.recv(snapshot)
+            except:
+                print(2)
+                break;          # Interrupted
+
+            print(3)
 
     def subscribe(self, topic): 
         print("Collecting updates from a given topic server...")
