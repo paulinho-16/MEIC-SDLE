@@ -1,6 +1,12 @@
 import struct
 
 class Message(object):
+    """
+    0: key (ID)
+    1: sequence (INTEGER)
+    2: body (STRING)
+    """
+
     key = None # key (string)
     sequence = 0 # int
     body = None # blob

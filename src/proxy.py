@@ -64,6 +64,8 @@ class Proxy:
         self.frontend = self.ctx.socket(zmq.XSUB)
         self.frontend.bind(f"tcp://{self.IP}:{self.FRONTEND_PORT}")
 
+        # When byte 1 is sent, all topics are subscribed
+        self.frontend.send(b'\x01')
 
     def __init_snapshot(self):
         manager_thread = threading.Thread(target=self.snapshot_manager, args=(self.ctx, self.pipe))
@@ -80,14 +82,13 @@ class Proxy:
         poller.register(pipe, zmq.POLLIN)
         poller.register(snapshot, zmq.POLLIN)
 
-        sequence = 0       # Current snapshot version number
+        sequence = 0 
         while True:
             try:
                 items = dict(poller.poll())
             except (zmq.ZMQError, KeyboardInterrupt):
-                break # interrupt/context shutdown
+                break
             
-            print(items)
             if snapshot in items:
                 msg = snapshot.recv_multipart()
                 print(f"Snapshot {msg}")
@@ -96,6 +97,7 @@ class Proxy:
                 request = msg[1]
 
                 if request == b"GETSNAP":
+                    # TODO Restore state, put missing messages in queue for the client
                     pass
                 else:
                     print("E: bad request, aborting\n")
@@ -108,37 +110,17 @@ class Proxy:
                 msg.send(snapshot)
             if pipe in items:
                 msg = pipe.recv_multipart()
+        
+                # TODO Save the message somewhere 
                 
-                message_map[0] = msg
-                print(msg)
-
-    #def poller(self):
-        #poller = zmq.Poller()
-        #poller.register(self.frontend, zmq.POLLIN)
-        #poller.register(self.backend, zmq.POLLIN)
+                print(f"Pipe {msg}")
 
     def init_proxy(self):
-        # Listener
-        #l_thread = Thread(target=self.listener_thread, args=(self.pipe[1],))
-        #l_thread.start()
-
         try:
             zmq.proxy(self.frontend, self.backend, self.updates)
         except KeyboardInterrupt:
             print("Interrupted")
-     
-    def listener_thread(self, pipe):
-        while True:
-            try:
-                #body = pipe.recv()
-                #msg = Message(0, b'key', body)
-                #print(self.updates)
-                #msg.send(self.updates)
-                pass
-            except zmq.ZMQError as e:
-                if e.errno == zmq.ETERM:
-                    break           # Interrupted
-
+    
 if __name__ == '__main__':
     proxy = Proxy()
     proxy.init_proxy()
