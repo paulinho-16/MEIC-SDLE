@@ -29,14 +29,16 @@ class Server:
             """
             i += 1
             string = "%s-%05d" % (uppercase[randint(0,10)], randint(0,100000))
+            print(string)
             try:
                 self.socket.send(string.encode('utf-8'))
             except zmq.ZMQError as e:
+                print("error")
                 if e.errno == zmq.ETERM:
                     break           # Interrupted
                 else:
                     raise
-            time.sleep(0.1)
+            time.sleep(1)
 
 if __name__ == '__main__':
     server = Server()

@@ -62,6 +62,7 @@ class Client:
         while count < 5:
             try:
                 msg = self.socket.recv_multipart()
+                print(msg)
             except zmq.ZMQError as e:
                 if e.errno == zmq.ETERM:
                     break           # Interrupted

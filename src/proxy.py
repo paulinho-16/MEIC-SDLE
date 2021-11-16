@@ -49,7 +49,7 @@ class Proxy:
         self.FRONTEND_PORT = 6000
         self.BACKEND_PORT = 6001
         self.ctx = zmq.Context.instance()
-        self.pipe = zpipe(self.ctx)
+        self.updates, self.pipe = zpipe(self.ctx)
         self.topics = {}
 
         self.__init_backend()
@@ -63,38 +63,34 @@ class Proxy:
     def __init_frontend(self):
         self.frontend = self.ctx.socket(zmq.XSUB)
         self.frontend.bind(f"tcp://{self.IP}:{self.FRONTEND_PORT}")
-    
-    def __init_snapshot(self):
-        updates, peer = zpipe(self.ctx)
 
-        manager_thread = threading.Thread(target=self.state_manager, args=(self.ctx,peer))
+
+    def __init_snapshot(self):
+        manager_thread = threading.Thread(target=self.snapshot_manager, args=(self.ctx, self.pipe))
         manager_thread.daemon=True
         manager_thread.start()
 
-    def state_manager(self, ctx, pipe):
+    def snapshot_manager(self, ctx, pipe):
+        message_map = {}
         pipe.send_string("READY")
         snapshot = ctx.socket(zmq.ROUTER)
         snapshot.bind("tcp://*:5556")
 
         poller = zmq.Poller()
-        poller.register(snapshot, zmq.POLLIN)
         poller.register(pipe, zmq.POLLIN)
+        poller.register(snapshot, zmq.POLLIN)
 
         sequence = 0       # Current snapshot version number
         while True:
-            print(1)
             try:
-                print(2)
                 items = dict(poller.poll())
             except (zmq.ZMQError, KeyboardInterrupt):
-                print(3)
                 break # interrupt/context shutdown
-
-            print(4)
+            
             print(items)
             if snapshot in items:
                 msg = snapshot.recv_multipart()
-                print(msg)
+                print(f"Snapshot {msg}")
 
                 identity = msg[0]
                 request = msg[1]
@@ -110,20 +106,11 @@ class Proxy:
                 msg.key = b"ENDSNAP"
                 msg.body = b""
                 msg.send(snapshot)
-
-                """
-                # For each entry in kvmap, send kvmsg to client
-                for k,v in kvmap.items():
-                    send_single(k,v,route)
-
-                # Now send END message with sequence number
-                print(f"Sendig state shapshot={sequence}\n")
-                snapshot.send(identity, zmq.SNDMORE)
-                kvmsg = KVMsg(sequence)
-                kvmsg.key = "KTHXBAI"
-                kvmsg.body = ""
-                kvmsg.send(snapshot)
-                """
+            if pipe in items:
+                msg = pipe.recv_multipart()
+                
+                message_map[0] = msg
+                print(msg)
 
     #def poller(self):
         #poller = zmq.Poller()
@@ -132,23 +119,25 @@ class Proxy:
 
     def init_proxy(self):
         # Listener
-        l_thread = Thread(target=listener_thread, args=(self.pipe[1],))
-        l_thread.start()
+        #l_thread = Thread(target=self.listener_thread, args=(self.pipe[1],))
+        #l_thread.start()
 
         try:
-            zmq.proxy(self.frontend, self.backend, self.pipe[0])
+            zmq.proxy(self.frontend, self.backend, self.updates)
         except KeyboardInterrupt:
             print("Interrupted")
-
-            
-        
-def listener_thread(pipe):
-    while True:
-        try:
-            print(pipe.recv_multipart())
-        except zmq.ZMQError as e:
-            if e.errno == zmq.ETERM:
-                break           # Interrupted
+     
+    def listener_thread(self, pipe):
+        while True:
+            try:
+                #body = pipe.recv()
+                #msg = Message(0, b'key', body)
+                #print(self.updates)
+                #msg.send(self.updates)
+                pass
+            except zmq.ZMQError as e:
+                if e.errno == zmq.ETERM:
+                    break           # Interrupted
 
 if __name__ == '__main__':
     proxy = Proxy()
