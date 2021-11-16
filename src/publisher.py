@@ -18,6 +18,9 @@ class Server:
         self.socket = self.ctx.socket(zmq.PUB)
         self.socket.connect("tcp://127.0.0.1:6000")
 
+    def put(self, topic, message):
+        self.socket.send((f"{topic}_{message}").encode('utf-8'))
+
     def update(self):
         i = 0
         while True:
