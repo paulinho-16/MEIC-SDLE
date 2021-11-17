@@ -82,7 +82,7 @@ class Proxy:
         poller.register(pipe, zmq.POLLIN)
         poller.register(snapshot, zmq.POLLIN)
 
-        sequence = 0 
+        sequence = 0
         while True:
             try:
                 items = dict(poller.poll())
@@ -95,24 +95,38 @@ class Proxy:
 
                 identity = msg[0]
                 request = msg[1]
+                client_id = msg[2]
+                seq_number = msg[3]
 
                 if request == b"GETSNAP":
-                    # TODO Restore state, put missing messages in queue for the client
-                    pass
+                    seqT = int.from_bytes(seq_number, byteorder='big')
+                    while seqT < sequence+1:
+                        try:
+                            snapshot.send(identity, zmq.SNDMORE)
+                            msg = Message(int.from_bytes(message_map[seqT][2], byteorder='big'), key=message_map[seqT][0], body=message_map[seqT][1])
+                            msg.send(snapshot)
+                            print(sequence)
+                            seqT += 1
+                        except zmq.ZMQError as e:
+                            print("error")
+                            break
                 else:
                     print("E: bad request, aborting\n")
                     break
 
                 snapshot.send(identity, zmq.SNDMORE)
-                msg = Message(sequence)
-                msg.key = b"ENDSNAP"
-                msg.body = b""
+                msg = Message(sequence, key=b"ENDSNAP", body=b"Closing Snap")
                 msg.send(snapshot)
             if pipe in items:
                 msg = pipe.recv_multipart()
-        
-                # TODO Save the message somewhere 
-                
+
+                if len(msg) == 3:
+                    key, body, seq = msg
+                    seq = int.from_bytes(seq, byteorder='big')
+                    if seq >= sequence:
+                        sequence = seq
+                        message_map[seq] = msg
+
                 print(f"Pipe {msg}")
 
     def init_proxy(self):
