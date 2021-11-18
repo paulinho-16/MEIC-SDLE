@@ -8,7 +8,7 @@ import zmq
 
 from zmq.devices import monitored_queue
 from random import randrange
-from message import Message
+from common import Message
 
 class Server:
     def __init__(self):
@@ -39,7 +39,7 @@ class Server:
             msg.dump()
             try:
                 msg.send(self.socket)
-            except zmq.ZMQError as e:
+            except Exception:
                 print("error")
                 break
             

@@ -1,35 +1,58 @@
 import sys
 import zmq
 import threading
-from message import Message
+from common import Message
 import time
 
 class Client:
     def __init__(self):
+        self.IP = "127.0.0.1"
+        self.PORT = 6001
+
         self.client_id = 2
         self.ctx = zmq.Context()
         self.socket = self.ctx.socket(zmq.SUB)
+        self.socket.connect(f"tcp://{self.IP}:{self.PORT")
+
         self.topic_list = []
 
         self.subscribe(b"A")
         self.subscribe(b"B")
+        self.subscribe(b"C")
 
         self.__init_snapshot()
-        #manager_thread = threading.Thread(target=self.__init_snapshot, args=())
-        #manager_thread.daemon=True
-        #manager_thread.start()
+
+    def __hash__(self):
+        return hash(self.client_id)
+
+    def __eq__(self, other):
+        return self.client_id == other.client_id
+
+    def subscribe(self, topic): 
+        print(f"Subscribring \'{topic}\'.")
+        self.topic_list.append(topic)
+        
+        # Subscribe
+        self.socket.setsockopt(zmq.SUBSCRIBE, topic)
+        self.socket.setsockopt(zmq.CONFLATE, 1)
+
+    def unsubscribe(self, topic):
+        print(f"Unsubscribring \'{topic}\'.")
+
+        if topic in self.topic_list: self.topic_list.remove(topic)
+
+        # Unsubscribe
+        self.socket.setsockopt(zmq.UNSUBSCRIBE, topic)
 
     def __init_snapshot(self):
         snapshot = self.ctx.socket(zmq.DEALER)
         snapshot.linger = 0
         
         snapshot.connect("tcp://127.0.0.1:5556")
-        #snapshot.send_string()
-        id_bytes = "1"
-
+        
         msg = Message(1)
         msg.key = "GETSNAP".encode("utf-8")
-        msg.body = id_bytes.encode("utf-8")
+        msg.body = str(self.topic_list).encode("utf-8")
         msg.send(snapshot)
 
         while True:
@@ -44,42 +67,16 @@ class Client:
             if key == b"ENDSNAP":
                 print("Received snapshot")
                 break
-            
-            time.sleep(1)
-            #store
-
-    def __hash__(self):
-        return hash(self.client_id)
-
-    def __eq__(self, other):
-        return self.client_id == other.client_id
-
-    def subscribe(self, topic): 
-        print(f"Subscribring \'{topic}\'.")
-        self.socket.connect("tcp://127.0.0.1:6001")
-
-        # Subscribe to zipcode, default is NYC, 10001
-        self.topic_list.append(topic)
-        self.socket.setsockopt(zmq.SUBSCRIBE, topic)
-        self.socket.setsockopt(zmq.CONFLATE, 1)
-
-    def unsubscribe(self, topic):
-        self.socket.setsockopt(zmq.UNSUBSCRIBE, topic)
+            time.sleep(0.1)
 
     def get(self):
-        return self.socket.recv_string()
-
-    def put(self):
-        """
-        Client creates a new message on a topic
-        """
-        pass
+        return Message.recv(self.socket)
 
     def update(self):
         count = 0
         while count < 5:
             try:
-                msg = Message.recv(self.socket)
+                msg = self.get()
                 msg.dump()
             except zmq.ZMQError as e:
                 break          

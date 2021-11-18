@@ -4,20 +4,21 @@ from random import randint
 from string import ascii_uppercase as uppercase
 from threading import Thread
 import threading
-from message import Message
 
 import zmq
 
+import ast
+
 from zmq.devices import monitored_queue
 from random import randrange
-
-
 
 import binascii
 import os
 from random import randint
 
 import zmq
+
+from common import Message
 
 def zpipe(ctx):
     """
@@ -48,6 +49,7 @@ class Proxy:
         self.IP = "127.0.0.1"
         self.FRONTEND_PORT = 6000
         self.BACKEND_PORT = 6001
+        
         self.ctx = zmq.Context.instance()
         self.updates, self.pipe = zpipe(self.ctx)
         self.topics = {}
@@ -95,17 +97,18 @@ class Proxy:
 
                 identity = msg[0]
                 request = msg[1]
-                client_id = msg[2]
+                topic = msg[2]
                 seq_number = msg[3]
 
                 if request == b"GETSNAP":
                     seqT = int.from_bytes(seq_number, byteorder='big')
                     while seqT < sequence+1:
                         try:
-                            snapshot.send(identity, zmq.SNDMORE)
-                            msg = Message(int.from_bytes(message_map[seqT][2], byteorder='big'), key=message_map[seqT][0], body=message_map[seqT][1])
-                            msg.send(snapshot)
-                            print(sequence)
+                            topic_list_rcv = ast.literal_eval(topic.decode("utf-8"))
+                            if message_map[seqT][0].startswith(tuple(topic_list_rcv)):
+                                snapshot.send(identity, zmq.SNDMORE)
+                                msg = Message(int.from_bytes(message_map[seqT][2], byteorder='big'), key=message_map[seqT][0], body=message_map[seqT][1])
+                                msg.send(snapshot)
                             seqT += 1
                         except zmq.ZMQError as e:
                             print("error")
