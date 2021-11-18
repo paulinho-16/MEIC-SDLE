@@ -1,4 +1,4 @@
-from message import Message
+from common import Message
 
 class Topic:
     def __init__(self, name):

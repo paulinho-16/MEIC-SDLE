@@ -1,25 +1,42 @@
-import sys
-import zmq
+# Standard Library Imports
 import threading
-from common import Message
+
+# Third Party Imports
 import time
+import zmq
+
+# Local Imports
+from common import Message
 
 class Client:
-    def __init__(self):
+    def __init__(self, client_id):
+        # Parameters
         self.IP = "127.0.0.1"
-        self.PORT = 6001
-
-        self.client_id = 2
-        self.ctx = zmq.Context()
-        self.socket = self.ctx.socket(zmq.SUB)
-        self.socket.connect(f"tcp://{self.IP}:{self.PORT")
-
+        self.SUB_PORT = 6001
+        self.DEALER_PORT = 5556
+        self.client_id = client_id
         self.topic_list = []
 
-        self.subscribe(b"A")
-        self.subscribe(b"B")
-        self.subscribe(b"C")
+        # Create Context and Connections
+        self.ctx = zmq.Context()
 
+        self.socket = self.ctx.socket(zmq.SUB)
+        self.socket.connect(f"tcp://{self.IP}:{self.SUB_PORT}")
+
+        self.snapshot = self.ctx.socket(zmq.DEALER)
+        self.snapshot.linger = 0
+        self.snapshot.connect(f"tcp://{self.IP}:{self.DEALER_PORT}")
+
+        # Restore previous client state
+        self.last_seq = 1
+        self.to_subscribe = [b"A", b"C", b"E"]
+        self.__restore_state()
+
+        # Subscribe topics
+        for topic in self.to_subscribe:
+            self.subscribe(topic)
+
+        # Get missing messages from Proxy Server
         self.__init_snapshot()
 
     def __hash__(self):
@@ -27,6 +44,27 @@ class Client:
 
     def __eq__(self, other):
         return self.client_id == other.client_id
+
+    def __restore_state(self):
+        pass
+
+    def __init_snapshot(self):
+        msg = Message(self.last_seq, key="GETSNAP".encode("utf-8"), body=str(self.topic_list).encode("utf-8"))
+        msg.send(self.snapshot)
+
+        while True:
+            try:
+                msg = self.snapshot.recv_multipart()
+                key = msg[0]
+                print(msg)
+            except Exception as e:
+                print(f"Error: {str(e)}")
+                break
+
+            if key == b"ENDSNAP":
+                print("Received snapshot")
+                break
+            time.sleep(0.1)
 
     def subscribe(self, topic): 
         print(f"Subscribring \'{topic}\'.")
@@ -44,31 +82,6 @@ class Client:
         # Unsubscribe
         self.socket.setsockopt(zmq.UNSUBSCRIBE, topic)
 
-    def __init_snapshot(self):
-        snapshot = self.ctx.socket(zmq.DEALER)
-        snapshot.linger = 0
-        
-        snapshot.connect("tcp://127.0.0.1:5556")
-        
-        msg = Message(1)
-        msg.key = "GETSNAP".encode("utf-8")
-        msg.body = str(self.topic_list).encode("utf-8")
-        msg.send(snapshot)
-
-        while True:
-            try:
-                msg = snapshot.recv_multipart()
-                key = msg[0]
-                print(msg)
-            except Exception as e:
-                print(f"Error: {str(e)}")
-                break;          # Interrupted
-
-            if key == b"ENDSNAP":
-                print("Received snapshot")
-                break
-            time.sleep(0.1)
-
     def get(self):
         return Message.recv(self.socket)
 
@@ -78,12 +91,13 @@ class Client:
             try:
                 msg = self.get()
                 msg.dump()
-            except zmq.ZMQError as e:
+            except Exception as e:
+                print(f"Error: {str(e)}")
                 break          
             count += 1
 
         print("Subscriber received %d messages" % count)
 
 if __name__ == "__main__":
-    new_client = Client()
+    new_client = Client(1)
     new_client.update()
