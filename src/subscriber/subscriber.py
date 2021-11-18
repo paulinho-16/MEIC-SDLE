@@ -2,11 +2,13 @@
 import threading
 
 # Third Party Imports
+import pickle
 import time
 import zmq
 
 # Local Imports
 from common import Message
+from .subscriber_storage import SubscriberStorage
 
 class Subscriber:
     def __init__(self, client_id):
@@ -28,12 +30,11 @@ class Subscriber:
         self.snapshot.connect(f"tcp://{self.IP}:{self.DEALER_PORT}")
 
         # Restore previous client state
-        self.last_seq = 1
-        self.to_subscribe = [b"A", b"C", b"E"]
+        self.storage = SubscriberStorage()
         self.__restore_state()
 
         # Subscribe topics
-        for topic in self.to_subscribe:
+        for topic in self.storage.current_subscribed:
             self.subscribe(topic)
 
         # Get missing messages from Proxy Server
@@ -46,10 +47,20 @@ class Subscriber:
         return self.client_id == other.client_id
 
     def __restore_state(self):
-        pass
+        try:
+            output_file = open(f"./subscriber/storage-{self.client_id}.ser", 'rb')
+            self.storage = pickle.load(output_file)
+            output_file.close()
+        except Exception as e:
+            print("Without previous state")
+
+    def __save_state(self):
+        output_file = open(f"./subscriber/storage-{self.client_id}.ser", 'wb')
+        pickle.dump(self.storage, output_file)
+        output_file.close()
 
     def __init_snapshot(self):
-        msg = Message(self.last_seq, key="GETSNAP".encode("utf-8"), body=str(self.topic_list).encode("utf-8"))
+        msg = Message(self.storage.last_seq, key="GETSNAP".encode("utf-8"), body=str(self.topic_list).encode("utf-8"))
         msg.send(self.snapshot)
 
         while True:
@@ -91,6 +102,8 @@ class Subscriber:
             try:
                 msg = self.get()
                 msg.dump()
+                self.storage.update_seq(msg.sequence)
+                self.__save_state()
             except Exception as e:
                 print(f"Error: {str(e)}")
                 break          
