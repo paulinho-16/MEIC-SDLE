@@ -36,8 +36,8 @@ class Subscriber:
         self.__restore_state()
 
         # Subscribe topics
-        for topic in self.storage.current_subscribed:
-            self.subscribe(topic)
+        #for topic in self.storage.current_subscribed:
+        #    self.subscribe(topic)
 
         # Get missing messages from Proxy Server
         self.__init_snapshot()
@@ -85,7 +85,7 @@ class Subscriber:
         self.topic_list.append(topic)
         
         # Subscribe
-        self.socket.setsockopt(zmq.SUBSCRIBE, topic)
+        self.socket.setsockopt(zmq.SUBSCRIBE, topic.encode("utf-8"))
         self.socket.setsockopt(zmq.CONFLATE, 1)
 
     def unsubscribe(self, topic):
@@ -94,7 +94,7 @@ class Subscriber:
         if topic in self.topic_list: self.topic_list.remove(topic)
 
         # Unsubscribe
-        self.socket.setsockopt(zmq.UNSUBSCRIBE, topic)
+        self.socket.setsockopt(zmq.UNSUBSCRIBE, topic.encode("utf-8"))
 
     def get(self):
         msg = Message.recv(self.socket)

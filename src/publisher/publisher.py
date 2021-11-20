@@ -31,6 +31,7 @@ class Publisher:
         msg.key = key.encode("utf-8")
         msg.body = string.encode("utf-8")
         msg.dump()
+
         try:
             msg.send(self.socket)
         except Exception:
@@ -38,7 +39,9 @@ class Publisher:
 
         self.sequence += 1
        
-
+    def subscribe(self):
+        pass
+        
     def run(self):
         s = SimpleXMLRPCServer(('127.0.0.1', 8080), allow_none=True, logRequests=False)
         s.register_function(self.put)

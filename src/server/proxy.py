@@ -51,13 +51,12 @@ class Proxy:
         self.BACKEND_PORT = 6001
         
         self.SNAPSHOT_PORT = 5556
-        self.ACK_PUB_PORT = 5557
+        self.ACK_PORT = 5557
         
         self.ctx = zmq.Context.instance()
         self.updates, self.pipe = zpipe(self.ctx)
         self.topics = {}
 
-        self.__send_ack()
         self.__init_backend()
         self.__init_frontend()
         self.__init_snapshot()
@@ -73,8 +72,10 @@ class Proxy:
         # When byte 1 is sent, all topics are subscribed
         self.frontend.send(b'\x01')
 
-    def __send_ack(self):
-        pass
+    def __send_ack(self, ip_port, msg_hash):
+        self.ack = self.ctx.socket(zmq.PUSH)
+        self.ack.bind(f"tcp://{ip_port}")
+        self.ack.send("ACK " + str(msg_hash))
 
     def __init_snapshot(self):
         manager_thread = threading.Thread(target=self.snapshot_manager, args=(self.ctx, self.pipe))
@@ -129,13 +130,15 @@ class Proxy:
                 msg.send(snapshot)
             if pipe in items:
                 msg = pipe.recv_multipart()
-
-                if len(msg) == 3:
-                    key, body, seq = msg
+    
+                if len(msg) == 4:
+                    ip_port, key, body, seq, msg_hash = msg
                     seq = int.from_bytes(seq, byteorder='big')
                     if seq >= sequence:
                         sequence = seq
                         message_map[seq] = msg
+
+                    self.__send_ack(ip_port, msg_hash)
 
                 print(f"Pipe {msg}")
 
