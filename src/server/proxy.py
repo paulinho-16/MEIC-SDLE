@@ -114,6 +114,8 @@ class Proxy:
                 msg.send(self.frontend)
                 print("sent")
 
+                pub_message = Message(int.from_bytes(seq_number, byteorder='big'), key=request, body=topic)
+                pub_message.send(self.backend)
             if snapshot in items:
                 msg = snapshot.recv_multipart()
                 print(f"Snapshot {msg}")
@@ -128,10 +130,11 @@ class Proxy:
                     while seqT < sequence+1:
                         try:
                             topic_list_rcv = ast.literal_eval(topic.decode("utf-8"))
-                            if message_map[seqT][0].startswith(tuple(topic_list_rcv)):
-                                snapshot.send(identity, zmq.SNDMORE)
-                                msg = Message(int.from_bytes(message_map[seqT][2], byteorder='big'), key=message_map[seqT][0], body=message_map[seqT][1])
-                                msg.send(snapshot)
+                            if len(message_map) != 0:
+                                if message_map[seqT][0].startswith(tuple(topic_list_rcv)):
+                                    snapshot.send(identity, zmq.SNDMORE)
+                                    msg = Message(int.from_bytes(message_map[seqT][2], byteorder='big'), key=message_map[seqT][0], body=message_map[seqT][1])
+                                    msg.send(snapshot)
                             seqT += 1
                         except zmq.ZMQError as e:
                             print("error")

@@ -13,7 +13,7 @@ class Message(object):
     clients_waiting = [] # list of client ids
     
     def __init__(self, sequence, key=None, body=None):
-        assert isinstance(sequence, int)
+        #assert isinstance(sequence, int)
         self.sequence = sequence
         self.key = key
         self.body = body

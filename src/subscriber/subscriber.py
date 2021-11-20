@@ -114,19 +114,20 @@ class Subscriber:
         s.register_function(self.crash)
         s.serve_forever()
 
-    """
+    
     def update(self):
+        self.subscribe("A")
+        self.subscribe("B")
+
         count = 0
         while count < 5:
             try:
-                msg = self.get()
-                msg.dump()
-                self.storage.update_seq(msg.sequence)
-                self.__save_state()
+                msg = self.socket.recv_multipart()
+                print(msg)
             except Exception as e:
                 print(f"Error: {str(e)}")
                 break          
             count += 1
 
         print("Subscriber received %d messages" % count)
-    """
+    
