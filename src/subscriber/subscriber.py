@@ -36,8 +36,8 @@ class Subscriber:
         self.__restore_state()
 
         # Subscribe topics
-        for topic in self.storage.current_subscribed:
-            self.subscribe(topic)
+        #for topic in self.storage.current_subscribed:
+        #    self.subscribe(topic)
 
         # Get missing messages from Proxy Server
         self.__init_snapshot()
@@ -62,6 +62,10 @@ class Subscriber:
         pickle.dump(self.storage, output_file)
         output_file.close()
 
+    def crash(self):
+        #print(0/0)
+        exit()
+
     def __init_snapshot(self):
         msg = Message(self.storage.last_seq, key="GETSNAP".encode("utf-8"), body=str(self.topic_list).encode("utf-8"))
         msg.send(self.snapshot)
@@ -81,15 +85,15 @@ class Subscriber:
             time.sleep(0.1)
 
     def subscribe(self, topic): 
-        print(f"Subscribring \'{topic}\'.")
+        print(f"Subscribing \'{topic}\'.")
         self.topic_list.append(topic)
         
         # Subscribe
-        self.socket.setsockopt(zmq.SUBSCRIBE, topic)
+        self.socket.setsockopt(zmq.SUBSCRIBE, topic.encode("utf-8"))
         self.socket.setsockopt(zmq.CONFLATE, 1)
 
     def unsubscribe(self, topic):
-        print(f"Unsubscribring \'{topic}\'.")
+        print(f"Unsubscribing \'{topic}\'.")
 
         if topic in self.topic_list: self.topic_list.remove(topic)
 
@@ -107,6 +111,7 @@ class Subscriber:
         s.register_function(self.subscribe)
         s.register_function(self.unsubscribe)
         s.register_function(self.get)
+        s.register_function(self.crash)
         s.serve_forever()
 
     """

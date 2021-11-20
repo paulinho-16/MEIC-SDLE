@@ -63,12 +63,12 @@ class Proxy:
         self.__init_snapshot()
 
     def __init_backend(self):
-        self.backend = self.ctx.socket(zmq.XPUB)
+        self.backend = self.ctx.socket(zmq.PUB)
         self.backend.bind(f"tcp://*:{self.BACKEND_PORT}")
         
     def __init_frontend(self):
-        self.frontend = self.ctx.socket(zmq.XSUB)
-        self.frontend.bind(f"tcp://{self.IP}:{self.FRONTEND_PORT}")
+        self.frontend = self.ctx.socket(zmq.ROUTER)
+        self.frontend.bind(f"tcp://*:{self.FRONTEND_PORT}")
 
         # When byte 1 is sent, all topics are subscribed
         self.frontend.send(b'\x01')
@@ -77,27 +77,43 @@ class Proxy:
         pass
 
     def __init_snapshot(self):
-        manager_thread = threading.Thread(target=self.snapshot_manager, args=(self.ctx, self.pipe))
-        manager_thread.daemon=True
-        manager_thread.start()
+        #manager_thread = threading.Thread(target=self.snapshot_manager, args=(self.ctx, self.pipe))
+        #manager_thread.daemon=True
+        #manager_thread.start()
+        self.snapshot_manager(self.ctx, self.pipe)
 
     def snapshot_manager(self, ctx, pipe):
         message_map = {}
         pipe.send_string("READY") # Maybe remove this later??
         snapshot = ctx.socket(zmq.ROUTER)
         snapshot.bind("tcp://*:5556")
-
         poller = zmq.Poller()
-        poller.register(pipe, zmq.POLLIN)
+        #poller.register(pipe, zmq.POLLIN)
+        poller.register(self.frontend, zmq.POLLIN)
         poller.register(snapshot, zmq.POLLIN)
 
         sequence = 0
         while True:
             try:
                 items = dict(poller.poll())
-            except (zmq.ZMQError, KeyboardInterrupt):
+            except Exception as e:
+                print(e)
+                print("fail")
                 break
             
+            if self.frontend in items:
+                msg = self.frontend.recv_multipart()
+                print(f"Frontend {msg}")
+                identity = msg[0]
+                request = msg[1]
+                topic = msg[2]
+                seq_number = msg[3]
+
+                self.frontend.send(identity, zmq.SNDMORE)
+                msg = Message(sequence, key=b"ACK", body=b"Received Message")
+                msg.send(self.frontend)
+                print("sent")
+
             if snapshot in items:
                 msg = snapshot.recv_multipart()
                 print(f"Snapshot {msg}")
@@ -127,6 +143,7 @@ class Proxy:
                 snapshot.send(identity, zmq.SNDMORE)
                 msg = Message(sequence, key=b"ENDSNAP", body=b"Closing Snap")
                 msg.send(snapshot)
+            """
             if pipe in items:
                 msg = pipe.recv_multipart()
 
@@ -138,9 +155,11 @@ class Proxy:
                         message_map[seq] = msg
 
                 print(f"Pipe {msg}")
+            """
 
     def init_proxy(self):
         try:
-            zmq.proxy(self.frontend, self.backend, self.updates)
+            pass
+            #zmq.proxy(self.frontend, self.backend, self.updates)
         except KeyboardInterrupt:
             print("Interrupted")

@@ -16,7 +16,7 @@ if __name__ == '__main__':
     print(sys.argv)
     s = ServerProxy("http://127.0.0.1:8081")
     
-    if sys.argv != 3:
+    if len(sys.argv) != 3:
         print("Usage:\n get [NTimes]\n subscribe [Topic]\n unsubscribe [Topic]")
 
     if len(sys.argv) < 2 or len(sys.argv) > 3:
@@ -26,9 +26,11 @@ if __name__ == '__main__':
     topic = ""
 
     if sys.argv[1] == "subscribe":
-        s.subscribe(sys.argv[1])
+        s.subscribe(sys.argv[2])
     elif sys.argv[1] == "get":
         dogets(int(sys.argv[2]))
     elif sys.argv[1] == "unsubscribe":
         s.unsubscribe(sys.argv[2].encode('utf-8'))
+    else:
+        s.crash()
     
