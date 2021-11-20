@@ -5,6 +5,7 @@ import threading
 import pickle
 import time
 import zmq
+from xmlrpc.server import SimpleXMLRPCServer
 
 # Local Imports
 from common import Message
@@ -24,6 +25,7 @@ class Subscriber:
 
         self.socket = self.ctx.socket(zmq.SUB)
         self.socket.connect(f"tcp://{self.IP}:{self.SUB_PORT}")
+        #self.socket.RCVTIMEO = 1000
 
         self.snapshot = self.ctx.socket(zmq.DEALER)
         self.snapshot.linger = 0
@@ -51,6 +53,7 @@ class Subscriber:
             output_file = open(f"./subscriber/storage-{self.client_id}.ser", 'rb')
             self.storage = pickle.load(output_file)
             output_file.close()
+            pass
         except Exception as e:
             print("Without previous state")
 
@@ -94,8 +97,19 @@ class Subscriber:
         self.socket.setsockopt(zmq.UNSUBSCRIBE, topic)
 
     def get(self):
-        return Message.recv(self.socket)
+        msg = Message.recv(self.socket)
+        msg.dump()
+        self.storage.update_seq(msg.sequence)
+        self.__save_state()
 
+    def run(self):
+        s = SimpleXMLRPCServer(('127.0.0.1', 8081), allow_none=True, logRequests=False)
+        s.register_function(self.subscribe)
+        s.register_function(self.unsubscribe)
+        s.register_function(self.get)
+        s.serve_forever()
+
+    """
     def update(self):
         count = 0
         while count < 5:
@@ -110,3 +124,4 @@ class Subscriber:
             count += 1
 
         print("Subscriber received %d messages" % count)
+    """

@@ -50,10 +50,14 @@ class Proxy:
         self.FRONTEND_PORT = 6000
         self.BACKEND_PORT = 6001
         
+        self.SNAPSHOT_PORT = 5556
+        self.ACK_PUB_PORT = 5557
+        
         self.ctx = zmq.Context.instance()
         self.updates, self.pipe = zpipe(self.ctx)
         self.topics = {}
 
+        self.__send_ack()
         self.__init_backend()
         self.__init_frontend()
         self.__init_snapshot()
@@ -69,6 +73,9 @@ class Proxy:
         # When byte 1 is sent, all topics are subscribed
         self.frontend.send(b'\x01')
 
+    def __send_ack(self):
+        pass
+
     def __init_snapshot(self):
         manager_thread = threading.Thread(target=self.snapshot_manager, args=(self.ctx, self.pipe))
         manager_thread.daemon=True
@@ -76,7 +83,7 @@ class Proxy:
 
     def snapshot_manager(self, ctx, pipe):
         message_map = {}
-        pipe.send_string("READY")
+        pipe.send_string("READY") # Maybe remove this later??
         snapshot = ctx.socket(zmq.ROUTER)
         snapshot.bind("tcp://*:5556")
 
