@@ -18,7 +18,7 @@ class Topic:
 
 class ServerStorage:
     def __init__(self):
-        self.sequence_number = -1
+        self.sequence_number = 0
         self.topic_list = {} # { id : topic }
         self.messages = {} # { num_seq : message }
         self.pub_seq = {} # { pub_id : last_seq }
@@ -52,12 +52,9 @@ class ServerStorage:
         else:
             topic = self.topic_list[topic_id]
             topic.remove_client(client_id)
-    def unsubscribe(self, client_id, topic_id):
-        topic = self.topic_list[topic_id]
-        topic.remove_client(client_id)
 
     def state(self):
         print(f"Sequence number: {self.sequence_number}")
         print(f"Topic list: {self.topic_list}")
         print(f"Messages seq: {self.messages}")
-        print(f"Pub sql: {self.pub_seq}")
+        print(f"Pub seq: {self.pub_seq}")

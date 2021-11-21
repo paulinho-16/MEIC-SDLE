@@ -85,12 +85,12 @@ class Proxy:
         seq = int.from_bytes(seq_number, byteorder='big')
         self.frontend.send(identity, zmq.SNDMORE)
 
-        self.storage.state()
-
         if seq > self.storage.sequence_number:
+            topic_id = topic.decode("utf-8")
+
             self.storage.sequence_number += 1
             self.storage.pub_seq[pub_id] = self.storage.sequence_number
-            self.storage.add_message(seq, topic, body)
+            self.storage.add_message(seq, topic_id, body)
 
             last_recv = f"Last received {self.storage.pub_seq[pub_id]}"
             msg = Message(seq, key=b"ACK", body=last_recv.encode("utf-8"))
@@ -102,6 +102,8 @@ class Proxy:
             last_recv = f"Last received {self.storage.pub_seq[pub_id]}"
             msg = Message(seq, key=b"NACK", body=last_recv.encode("utf-8"))
             msg.send(self.frontend)
+
+        self.storage.state()
 
     def handle_snapshot(self, msg):
         print(f"Snapshot {msg}")
