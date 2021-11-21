@@ -21,7 +21,8 @@ class Publisher:
         self.socket = self.ctx.socket(zmq.DEALER)
         self.socket.connect("tcp://127.0.0.1:6000")
         self.socket.linger = 0
-        self.sequence = 0
+
+        self.sequence = 1
 
     def put(self, topic, message):
         key = topic #"%s" % (uppercase[randint(0,10)])

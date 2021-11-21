@@ -85,7 +85,8 @@ class Proxy:
         seq = int.from_bytes(seq_number, byteorder='big')
         self.frontend.send(identity, zmq.SNDMORE)
 
-        self.storage.state()
+        if seq > self.storage.sequence_number:
+            topic_id = topic.decode("utf-8")
 
         if pub_id not in self.storage.pub_seq:
             self.storage.pub_seq[pub_id] = -1
@@ -105,6 +106,8 @@ class Proxy:
             msg = Message(seq, key=b"NACK", body=last_recv.encode("utf-8"))
             msg.send(self.frontend)
 
+        self.storage.state()
+
     def handle_snapshot(self, msg):
         print(f"Snapshot {msg}")
         identity = msg[0]
@@ -112,7 +115,16 @@ class Proxy:
         topic = msg[2]
         seq_number = msg[3]
 
+        if request == b"SUBINFO":
+            client_id, topic_name = topic.decode("utf-8").split("-")
+            self.storage.subscribe(client_id, topic_name)
+            self.storage.state()
+        if request == b"UNSUBINFO":
+            print("DEU UNNNNNNNNNNNNNNNNNNSUBBBBBBBBBBBBBBBB")
+            self.storage.unsubscribe(topic)
+            self.storage.state()
         if request == b"GETSNAP":
+            print("DEU SNAPPPPPPPPPPPPPPP")
             seqT = int.from_bytes(seq_number, byteorder='big')
             """
             while seqT < self.storage.sequence_number+1:
