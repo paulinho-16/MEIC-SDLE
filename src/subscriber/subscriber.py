@@ -87,6 +87,10 @@ class Subscriber:
     def subscribe(self, topic): 
         print(f"Subscribing \'{topic}\'.")
         self.topic_list.append(topic)
+
+        # SEND INFO ABOUT THE TOPIC SUBSCRIBE TO PROXY
+        msg = Message(self.storage.last_seq, key="SUBINFO".encode("utf-8"), body=(f"{self.client_id}-{topic}").encode("utf-8"))
+        msg.send(self.snapshot)
         
         # Subscribe
         self.socket.setsockopt(zmq.SUBSCRIBE, topic.encode("utf-8"))
@@ -94,6 +98,10 @@ class Subscriber:
 
     def unsubscribe(self, topic):
         print(f"Unsubscribing \'{topic}\'.")
+        
+        # SEND INFO ABOUT THE TOPIC UNSUBSCRIBE TO PROXY
+        msg = Message(self.storage.last_seq, key="UNSUBINFO".encode("utf-8"), body=topic.encode("utf-8"))
+        msg.send(self.snapshot)
 
         if topic in self.topic_list: self.topic_list.remove(topic)
 

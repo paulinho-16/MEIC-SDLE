@@ -110,7 +110,16 @@ class Proxy:
         topic = msg[2]
         seq_number = msg[3]
 
+        if request == b"SUBINFO":
+            client_id, topic_name = topic.decode("utf-8").split("-")
+            self.storage.subscribe(client_id, topic_name)
+            self.storage.state()
+        if request == b"UNSUBINFO":
+            print("DEU UNNNNNNNNNNNNNNNNNNSUBBBBBBBBBBBBBBBB")
+            self.storage.unsubscribe(topic)
+            self.storage.state()
         if request == b"GETSNAP":
+            print("DEU SNAPPPPPPPPPPPPPPP")
             seqT = int.from_bytes(seq_number, byteorder='big')
             """
             while seqT < self.storage.sequence_number+1:
