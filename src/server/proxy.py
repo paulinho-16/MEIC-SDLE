@@ -85,6 +85,8 @@ class Proxy:
         seq = int.from_bytes(seq_number, byteorder='big')
         self.frontend.send(identity, zmq.SNDMORE)
 
+        self.storage.state()
+
         if seq > self.storage.sequence_number:
             self.storage.sequence_number += 1
             self.storage.pub_seq[pub_id] = self.storage.sequence_number
@@ -111,7 +113,7 @@ class Proxy:
         if request == b"GETSNAP":
             seqT = int.from_bytes(seq_number, byteorder='big')
             """
-            while seqT < self.sequence_number+1:
+            while seqT < self.storage.sequence_number+1:
                 try:
                     topic_list_rcv = ast.literal_eval(topic.decode("utf-8"))
                     if len(message_map) != 0:
