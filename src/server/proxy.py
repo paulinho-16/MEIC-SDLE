@@ -79,24 +79,26 @@ class Proxy:
         print(f"Frontend {msg}")
         identity = msg[0]
         topic = msg[1]
-        body = msg[2]
+        pub_id, body = msg[2].decode('utf-8').split("-")
         seq_number = msg[3]
-        pub_id = 0 # TODO: Receber o id de cada publisher
+        pub_id = int(pub_id)
         seq = int.from_bytes(seq_number, byteorder='big')
         self.frontend.send(identity, zmq.SNDMORE)
 
         self.storage.state()
 
-        if seq > self.storage.sequence_number:
-            self.storage.sequence_number += 1
-            self.storage.pub_seq[pub_id] = self.storage.sequence_number
-            self.storage.add_message(seq, topic, body)
+        if pub_id not in self.storage.pub_seq:
+            self.storage.pub_seq[pub_id] = -1
+        if seq == (self.storage.pub_seq[pub_id] + 1):
+            self.storage.sequence_number += 1 # PROSY SEQUENCE VALUE
+            self.storage.pub_seq[pub_id] += 1
+            self.storage.add_message(seq, topic, body.encode('utf-8'))
 
             last_recv = f"Last received {self.storage.pub_seq[pub_id]}"
-            msg = Message(seq, key=b"ACK", body=last_recv.encode("utf-8"))
+            msg = Message(self.storage.sequence_number, key=b"ACK", body=last_recv.encode("utf-8"))
             msg.send(self.frontend)
 
-            pub_message = Message(seq, key=topic, body=body)
+            pub_message = Message(self.storage.sequence_number, key=topic, body=body.encode('utf-8'))
             pub_message.send(self.backend)
         else:
             last_recv = f"Last received {self.storage.pub_seq[pub_id]}"
