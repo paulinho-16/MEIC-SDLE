@@ -1,14 +1,28 @@
+from ctypes import LibraryLoader
 from server import Proxy
 from zmq.eventloop.ioloop import PeriodicCallback
-import _pickle as cPickle
+import pickle
+from os.path import exists
 
-def save_pickle(proxy):
+def save_pickle():
     print("Saving...")
-    with open(r"storage.pickle", "wb") as output_file:
-        cPickle.dump(proxy, output_file)
+
+    with open('storage.pickle', 'wb') as handle:
+        pickle.dump(proxy.storage, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+def load_pickle():
+    print("Loading...")
+    with open('storage.pickle', 'rb') as handle:
+        storage = pickle.load(handle)
+    return storage
 
 if __name__ == '__main__':
     proxy = Proxy()
-    scheduler = PeriodicCallback(save_pickle(proxy), 5)
+
+    # Load previous storage
+    # proxy.storage = load_pickle() if exists('./storage.pickle') else None
+
+    scheduler = PeriodicCallback(save_pickle, 5000)
     scheduler.start()
+
     proxy.start()
