@@ -31,6 +31,7 @@ class Publisher:
         msg.key = key.encode("utf-8")
         msg.body = string.encode("utf-8")
         msg.dump()
+
         try:
             msg.send(self.socket)
         except Exception:

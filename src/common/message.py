@@ -1,4 +1,6 @@
 import struct
+import time
+import zmq
 
 class Message(object):
     """
@@ -19,6 +21,10 @@ class Message(object):
         self.body = body
         self.clients_waiting = 0
 
+        self.IP = "127.0.0.1"
+        self.ACK_PORT = 5557
+        self.ctx = zmq.Context.instance()
+
     def store(self, dict):
         if self.key is not None and self.body is not None:
             dict[self.key] = self
@@ -28,7 +34,18 @@ class Message(object):
         key = b'' if self.key is None else self.key
         seq_s = struct.pack('!l', self.sequence)
         body = b'' if self.body is None else self.body
-        socket.send_multipart([ key, body, seq_s ])
+        ts = time.time()
+        msg_hash = str(hash(key.decode("utf-8")+body.decode("utf-8")+str(seq_s)+str(ts)))
+        ip_port = self.IP+":"+str(self.ACK_PORT)
+
+        socket.send_multipart([ip_port.encode('utf-8'), key, body, seq_s, msg_hash.encode("utf-8")])
+
+        # Create ACK socket // TODO: meter em thread
+        ack_socket = self.ctx.socket(zmq.PULL)
+        ack_socket.bind(f"tcp://{self.IP}:{self.ACK_PORT}")
+        res = ack_socket.recv()
+        
+        print(res)
 
     def add_client(client_id):
         clients_waiting.append(client_id)

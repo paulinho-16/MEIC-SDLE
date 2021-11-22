@@ -106,7 +106,7 @@ class Subscriber:
         if topic in self.topic_list: self.topic_list.remove(topic)
 
         # Unsubscribe
-        self.socket.setsockopt(zmq.UNSUBSCRIBE, topic)
+        self.socket.setsockopt(zmq.UNSUBSCRIBE, topic.encode("utf-8"))
 
     def get(self):
         msg = Message.recv(self.socket)
