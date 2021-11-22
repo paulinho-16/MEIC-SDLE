@@ -36,8 +36,8 @@ class Subscriber:
         self.__restore_state()
 
         # Subscribe topics
-        #for topic in self.storage.current_subscribed:
-        #    self.subscribe(topic)
+        for topic in self.storage.current_subscribed:
+            self.subscribe(topic)
 
         # Get missing messages from Proxy Server
         self.__init_snapshot()
@@ -74,6 +74,7 @@ class Subscriber:
             try:
                 msg = self.snapshot.recv_multipart()
                 key = msg[0]
+                print("here")
                 print(msg)
             except Exception as e:
                 print(f"Error: {str(e)}")
@@ -111,6 +112,10 @@ class Subscriber:
     def get(self):
         msg = Message.recv(self.socket)
         msg.dump()
+
+        msg_ack = Message(self.storage.last_seq, key="ACK-CLIENT".encode("utf-8"), body=str(msg.body).encode("utf-8"))
+        msg_ack.send(self.snapshot)
+
         self.storage.update_seq(msg.sequence)
         self.__save_state()
 
@@ -124,14 +129,10 @@ class Subscriber:
 
     
     def update(self):
-        self.subscribe("A")
-        self.subscribe("B")
-
         count = 0
         while count < 5:
             try:
-                msg = self.socket.recv_multipart()
-                print(msg)
+                self.get()
             except Exception as e:
                 print(f"Error: {str(e)}")
                 break          

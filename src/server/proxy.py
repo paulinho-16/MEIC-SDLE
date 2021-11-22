@@ -85,28 +85,32 @@ class Proxy:
         seq = int.from_bytes(seq_number, byteorder='big')
         self.frontend.send(identity, zmq.SNDMORE)
 
-        if seq > self.storage.sequence_number:
-            topic_id = topic.decode("utf-8")
+        # If publisher not exists, create publisher
+        self.storage.create_publisher(pub_id)
+        last_message_pub = self.storage.last_message_pub(pub_id)
 
-        if pub_id not in self.storage.pub_seq:
-            self.storage.pub_seq[pub_id] = -1
-        if seq == (self.storage.pub_seq[pub_id] + 1):
-            self.storage.sequence_number += 1 # PROXY SEQUENCE VALUE
-            self.storage.pub_seq[pub_id] += 1
-            self.storage.add_message(seq, topic, body.encode('utf-8'))
+        if seq == (last_message_pub + 1):
+            self.storage.recv_message_pub(pub_id)
+            
+            pub_message = Message(self.storage.sequence_number, key=topic, body=body.encode('utf-8'))
+            stored_return = self.storage.store_message(pub_id, seq, topic.decode("utf-8"), body.encode('utf-8'), pub_message)
 
-            last_recv = f"Last received {self.storage.pub_seq[pub_id]}"
+            if stored_return is None:
+                last_recv = f'The topic has 0 subscribers. The message was received, but not stored. Last received {last_message_pub}.'
+                msg = Message(self.storage.sequence_number, key=b"ACK", body=last_recv.encode("utf-8"))
+                msg.send(self.frontend)
+                return
+
+            last_recv = f'Last received {last_message_pub}'
             msg = Message(self.storage.sequence_number, key=b"ACK", body=last_recv.encode("utf-8"))
             msg.send(self.frontend)
 
-            pub_message = Message(self.storage.sequence_number, key=topic, body=body.encode('utf-8'))
             pub_message.send(self.backend)
         else:
-            last_recv = f"Last received {self.storage.pub_seq[pub_id]}"
+            last_recv = f'Last received {last_message_pub}'
             msg = Message(seq, key=b"NACK", body=last_recv.encode("utf-8"))
             msg.send(self.frontend)
-
-        self.storage.state()
+        #self.storage.state()
 
     def handle_snapshot(self, msg):
         print(f"Snapshot {msg}")
@@ -115,39 +119,38 @@ class Proxy:
         topic = msg[2]
         seq_number = msg[3]
 
+        if request == b"ACK-CLIENT":
+            pass
         if request == b"SUBINFO":
             print("SUB")
             client_id, topic_name = topic.decode("utf-8").split("-")
+
+            self.storage.add_topic(topic_name)
             self.storage.subscribe(client_id, topic_name)
-            self.storage.state()
-        if request == b"UNSUBINFO":
+        elif request == b"UNSUBINFO":
             print("UNSUB")
+
             self.storage.unsubscribe(topic)
-            self.storage.state()
-        if request == b"GETSNAP":
+            # Check if no subscriber remains, delete topic and all messages
+        elif request == b"GETSNAP":
             print("GETSNAP")
             last_msg_seq = int.from_bytes(seq_number, byteorder='big')
-            """
-            while seqT < self.storage.sequence_number+1:
-                try:
-                    topic_list_rcv = ast.literal_eval(topic.decode("utf-8"))
-                    if len(message_map) != 0:
-                        if message_map[seqT][0].startswith(tuple(topic_list_rcv)):
-                            self.snapshot.send(identity, zmq.SNDMORE)
-                            msg = Message(int.from_bytes(message_map[seqT][2], byteorder='big'), key=message_map[seqT][0], body=message_map[seqT][1])
-                            msg.send(self.snapshot)
-                    seqT += 1
-                except zmq.ZMQError as e:
-                    print("error")
-                    break
-            """
+            topic_list_rcv = ast.literal_eval(topic.decode("utf-8"))
+            message_list = []
+
+            for topic in topic_list_rcv:
+                message_list = self.storage.get_message(topic, 0)
+            
+            for msg_prev in message_list:
+                self.snapshot.send(identity, zmq.SNDMORE)
+                msg_prev.send(self.snapshot)
+            
+            self.snapshot.send(identity, zmq.SNDMORE)
+            msg = Message(0, key=b"ENDSNAP", body=b"Closing Snap")
+            msg.send(self.snapshot)
         else:
             print("E: bad request, aborting\n")
             return
-
-        self.snapshot.send(identity, zmq.SNDMORE)
-        msg = Message(0, key=b"ENDSNAP", body=b"Closing Snap")
-        msg.send(self.snapshot)
 
     def start(self):
         # Run reactor until process interrupted

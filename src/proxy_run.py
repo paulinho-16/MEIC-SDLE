@@ -5,7 +5,7 @@ import pickle
 from os.path import exists
 
 def save_pickle():
-    print("Saving...")
+    #print("Saving...")
 
     with open('storage.pickle', 'wb') as handle:
         pickle.dump(proxy.storage, handle, protocol=pickle.HIGHEST_PROTOCOL)

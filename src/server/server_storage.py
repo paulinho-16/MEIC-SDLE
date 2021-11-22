@@ -6,6 +6,8 @@ class ServerStorage:
         """
         For structure see example_db.json
         """
+        self.sequence_number = 0
+        self.messages = []
         self.db = { "topics": {}, "clients": {}, "publishers": {} }
 
     def add_topic(self, topic_id):
@@ -46,20 +48,7 @@ class ServerStorage:
         self.db["clients"][client_id] = client # Updates storage
         return self.db["clients"][client_id]
 
-    def register_publisher(self, publisher_id, topic_id):
-        publisher = self.db["publishers"].get(publisher_id, {})
-        last_msg_snt = publisher.get(topic_id, None) # Checks if topic already existed, if not creates it
-        if last_msg_snt is not None:
-            print(f"Error: Publisher {publisher_id} is already registered with topic {topic_id}", file=sys.stderr)
-            return None
-        if self.db["topics"].get(topic_id, None) is None:
-            self.add_topic(topic_id)
-        
-        publisher[topic_id] = -1
-        self.db["publishers"][publisher_id] = publisher # Updates storage
-        return self.db["publishers"][publisher_id]
-
-    def store_message(self, publisher_id, pub_seq, topic_id, content):
+    def store_message(self, publisher_id, pub_seq, topic_id, content, message):
         publisher = self.db["publishers"].get(publisher_id, None)
         if publisher is None:
             print(f"Error: Publisher {publisher_id} doesn't exist in storage", file=sys.stderr)
@@ -70,18 +59,18 @@ class ServerStorage:
             print(f"Error: Topic {topic_id} doesn't exist in storage", file=sys.stderr)
             return None
 
-        messages = topic["messages"]
-        next_seq = topic["last_msg"] + 1
-        message = {
-            "content": content,
-            "pub_id": publisher_id,
-            "pub_seq": pub_seq
-        }
-        messages[str(next_seq)] = message
-        return messages[str(next_seq)]
+        self.messages.append(message)
+
+        # TODO CHANGE THIS
+
+        return True
     
     def get_message(self, topic_id, real_seq):
+        if True:
+            return self.messages
+        
         topic = self.db["topics"].get(topic_id, None)
+        print(topic["messages"])
         if topic is None:
             print(f"Error: Topic {topic_id} doesn't exist in storage", file=sys.stderr)
             return { "content": "", "pub_id": -1, "pub_seq": -1 }
@@ -98,16 +87,28 @@ class ServerStorage:
             print(f"Error: Client {client_id} is not subscribed to topic {topic_id}", file=sys.stderr)
             return None
         
-        client[topic_id] = last_msg_rcv
+        client["last_msg"] = last_msg_rcv
         return self.db["clients"][client_id]
     
-    def update_publisher(self, publisher_id, topic_id, last_msg_snt):
+    def create_publisher(self, publisher_id):
+        publisher = self.db["publishers"].get(publisher_id, {})
+
+        if publisher == {}:
+            self.db["publishers"][publisher_id] = publisher
+            self.db["publishers"][publisher_id]["last_msg"] = -1
+        return self.db["publishers"][publisher_id]
+
+    def last_message_pub(self, pub_id):
+        return self.db["publishers"][pub_id]["last_msg"]
+
+    def recv_message_pub(self, publisher_id):
         publisher = self.db["publishers"].get(publisher_id, None)
         if publisher is None:
             print(f"Error: Publisher {publisher_id} doesn't exist in storage", file=sys.stderr)
             return None
         
-        publisher[topic_id] = last_msg_snt
+        self.sequence_number += 1
+        publisher["last_msg"] += 1
         return self.db["publishers"][publisher_id]
 
     def state(self):
@@ -154,64 +155,3 @@ class ServerStorage:
         
         print(f"\n==================================\n")
         
-        
-"""
-class Topic:
-    def __init__(self, name):
-        self.name = name
-        self.clients = [] # client_ids
-
-    def __eq__(self, other):
-        return self.name == other.name
-
-    def remove_client(self, client_id):
-        print(f'Removing client with id {client_id} from topic {self.name}')
-        self.clients.remove(client_id)
-
-    def add_client(self, client_id):
-        print(f'Adding client with id {client_id} to topic {self.name}')
-        self.clients.append(client_id)
-
-class ServerStorage:
-    def __init__(self):
-        self.sequence_number = 0
-        self.topic_list = {} # { id : topic }
-        self.messages = {} # { num_seq : message }
-        self.pub_seq = {} # { pub_id : last_seq }
-
-    def add_message(self, num_seq, topic, message):
-        if topic not in self.topic_list:
-            self.add_topic(topic)
-        
-        self.messages[num_seq] = Message(num_seq, topic, message)
-
-    def add_topic(self, topic):
-        if topic in self.topic_list:
-            print(f'Error: Topic {topic} already exists in Storage')
-        else:
-            self.topic_list[topic] = Topic(topic)
-
-    def request_message(self, num_seq):
-        return self.messages[num_seq]
-
-    def subscribe(self, client_id, topic_id):
-        if topic_id not in self.topic_list:
-            print(f"Error: Topic {topic_id} doesn't exist in Storage")
-            self.topic_list[topic_id] = Topic(topic_id)
-
-        topic = self.topic_list[topic_id]
-        topic.add_client(client_id)
-
-    def unsubscribe(self, client_id, topic_id):
-        if topic_id not in self.topic_list:
-            print(f"Error: Topic {topic_id} doesn't exist in Storage")
-        else:
-            topic = self.topic_list[topic_id]
-            topic.remove_client(client_id)
-
-    def state(self):
-        print(f"Sequence number: {self.sequence_number}")
-        print(f"Topic list: {self.topic_list}")
-        print(f"Messages seq: {self.messages}")
-        print(f"Pub seq: {self.pub_seq}")
-"""

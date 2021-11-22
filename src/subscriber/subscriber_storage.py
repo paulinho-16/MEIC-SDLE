@@ -2,7 +2,7 @@ class SubscriberStorage:
     def __init__(self):
         self.topic_list = [] # { id : topic }
         self.last_seq = 1
-        self.current_subscribed = [b"A", b"C", b"E"]
+        self.current_subscribed = ["A", "C", "E"]
 
     def update_seq(self, seq):
         self.last_seq = seq
