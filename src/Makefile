@@ -2,41 +2,41 @@ SHELL := /bin/bash
 .ONESHELL:
 .SHELLFLAGS := -eu -o pipefail -c
 
-PYTHON = ../env/Scripts/python.exe
+PYTHON = python.exe
 
-.PHONY: all
+.PHONY: all clean proxy publisher subscriber put get sub unsub
 
-all: proxy publisher subscriber
+all: proxy publisher subscriber # TODO: correr os 3
 
 # Run Proxy
 proxy:
-	$(PYTHON) proxy_run.py
+	@$(PYTHON) proxy_run.py
 
 # Run a publisher
 publisher:
-	$(PYTHON) pub_run.py
+	@$(PYTHON) pub_run.py
 
 # Run a subscriber
 subscriber:
-	$(PYTHON) subscriber.py
+	@$(PYTHON) sub_run.py
 
 # Publish a new message to a given topic
-put:
-	$(PYTHON) do_put.py
+put: 
+	@$(PYTHON) do_put.py $(filter-out $@, $(MAKECMDGOALS))
 
 # Get a message from a given topic
 get:
-	$(PYTHON) do_sub.py get
+	@$(PYTHON) do_sub.py $(MAKECMDGOALS)
 
 # Subscribe a new topic
 sub:
-	$(PYTHON) do_sub.py subscribe
+	@$(PYTHON) do_sub.py $(MAKECMDGOALS)
 
 # Unsubscribe a given topic
 unsub:
-	$(PYTHON) do_sub.py unsubscribe
+	@$(PYTHON) do_sub.py $(MAKECMDGOALS)
 
 # Remove generated folders and files
 clean:
 	rm -rf __pycache__
-	rm storage.ser
+	rm subscriber/storage-*.ser
