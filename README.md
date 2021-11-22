@@ -39,17 +39,17 @@ For Linux:
 5. Run a subscriber:
    `make subscriber`
 
-6. Publish a message of a new topic:
-   `make put`
+6. Publish a new message to a given topic
+   `make put [topic] [message] `
 
-7. Get a message from a given topic:
-   `make get`
+7. Receive nTimes messages
+   `make get [nTimes]`
 
 8. Subscribe a new topic:
-   `make sub`
+   `make sub [topic]`
 
 9. Unsubscribe a given topic:
-   `make unsub`
+   `make unsub [topic]`
 
 10. Clear all the output files:
    `make clean`

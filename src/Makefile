@@ -4,9 +4,7 @@ SHELL := /bin/bash
 
 PYTHON = python.exe
 
-.PHONY: all clean proxy publisher subscriber put get sub unsub
-
-all: proxy publisher subscriber # TODO: correr os 3
+.PHONY: proxy publisher subscriber put get sub unsub clean
 
 # Run Proxy
 proxy:
@@ -38,5 +36,6 @@ unsub:
 
 # Remove generated folders and files
 clean:
-	rm -rf __pycache__
-	rm subscriber/storage-*.ser
+	find . -name '__pycache__' -exec rm -rf "{}" +;
+	rm -f subscriber/storage-*.ser
+	rm -f storage.pickle
