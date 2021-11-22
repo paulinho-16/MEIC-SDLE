@@ -22,7 +22,7 @@ class Publisher:
         self.socket.connect("tcp://127.0.0.1:6000")
         self.socket.linger = 0
 
-        self.sequence = 1
+        self.sequence = 0
 
     def put(self, topic, message):
         key = topic #"%s" % (uppercase[randint(0,10)])
@@ -46,7 +46,6 @@ class Publisher:
 
         if key == b"ACK":
             print(f"Received ACK: {msg}")
-            time.sleep(0.1)
             self.sequence += 1
         elif key == b"NACK":
             print(f"Received NACK: {msg}")
