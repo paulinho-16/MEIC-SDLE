@@ -1,0 +1,75 @@
+{
+    "topics": [
+        {
+            "id": "topic-A",
+            "last_msg": 3,
+            "messages": [
+                {
+                    "content": "This is the first message received",
+                    "real_seq": 0,
+                    "pub_id": "pub-0",
+                    "pub_seq": 0
+                },
+                {
+                    "content": "This is the second message received",
+                    "real_seq": 1,
+                    "pub_id": "pub-1",
+                    "pub_seq": 0
+                },
+                {
+                    "content": "This is the third message received",
+                    "real_seq": 2,
+                    "pub_id": "pub-1",
+                    "pub_seq": 1
+                }
+            ]
+        },
+        {
+            "id": "topic-B",
+            "last_msg": -1,
+            "messages": [
+
+            ]
+        }
+    ],
+    "clients": [
+        {
+            "id": "client-0",
+            "topics": [
+                {
+                    "id": "topic-A",
+                    "last_msg": 1
+                }
+            ]
+        },
+        {
+            "id": "client-1",
+            "topics": [
+                {
+                    "id": "topic-B",
+                    "last_msg": -1
+                }
+            ]
+        }
+    ],
+    "publishers": [
+        {
+            "id": "pub-0",
+            "topics": [
+                {
+                    "id": "topic-A",
+                    "last_msg": 1
+                }
+            ]
+        },
+        {
+            "id": "pub-1",
+            "topics": [
+                {
+                    "id": "topic-A",
+                    "last_msg": 2
+                }
+            ]
+        }
+    ]
+}

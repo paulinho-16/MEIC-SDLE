@@ -91,7 +91,7 @@ class Proxy:
         if pub_id not in self.storage.pub_seq:
             self.storage.pub_seq[pub_id] = -1
         if seq == (self.storage.pub_seq[pub_id] + 1):
-            self.storage.sequence_number += 1 # PROSY SEQUENCE VALUE
+            self.storage.sequence_number += 1 # PROXY SEQUENCE VALUE
             self.storage.pub_seq[pub_id] += 1
             self.storage.add_message(seq, topic, body.encode('utf-8'))
 
@@ -116,16 +116,17 @@ class Proxy:
         seq_number = msg[3]
 
         if request == b"SUBINFO":
+            print("SUB")
             client_id, topic_name = topic.decode("utf-8").split("-")
             self.storage.subscribe(client_id, topic_name)
             self.storage.state()
         if request == b"UNSUBINFO":
-            print("DEU UNNNNNNNNNNNNNNNNNNSUBBBBBBBBBBBBBBBB")
+            print("UNSUB")
             self.storage.unsubscribe(topic)
             self.storage.state()
         if request == b"GETSNAP":
-            print("DEU SNAPPPPPPPPPPPPPPP")
-            seqT = int.from_bytes(seq_number, byteorder='big')
+            print("GETSNAP")
+            last_msg_seq = int.from_bytes(seq_number, byteorder='big')
             """
             while seqT < self.storage.sequence_number+1:
                 try:
