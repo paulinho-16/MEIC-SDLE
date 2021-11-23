@@ -54,15 +54,23 @@ class Proxy:
         print(f"Backend {msg}")
         identity = msg[0]
         keyword = msg[1].decode("utf-8")
-        last_id = int(msg[2].decode("utf-8"))
+        last_msg_seq = int(msg[2].decode("utf-8"))
 
         if keyword == "GET":
-            print(f"Send message with {last_id}")
+            print(f"Send message with {last_msg_seq}")
+            message_list = []
+            
+            #for topic in topic_list_rcv:
+            message_list = self.storage.get_message("A", last_msg_seq)
+            
+            if len(message_list) != 0:
+                self.backend.send(identity, zmq.SNDMORE)
+                message_list[0].send(self.backend)
+            else:
+                self.backend.send(identity, zmq.SNDMORE)
+                msg = Message(0, key=b"NACK", body="No messages to receive".encode("utf-8"))
+                msg.send(self.backend)
 
-            self.backend.send(identity, zmq.SNDMORE)
-            msg = Message(self.storage.sequence_number, key=b"A", body="teste".encode("utf-8"))
-            msg.send(self.backend)
-        
     def handle_frontend(self, msg):
         print(f"Frontend {msg}")
         identity = msg[0]

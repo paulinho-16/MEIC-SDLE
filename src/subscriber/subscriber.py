@@ -17,6 +17,8 @@ class Subscriber:
         self.IP = "127.0.0.1"
         self.SUB_PORT = 6001
         self.DEALER_PORT = 5556
+        self.RMI_PORT = 8081
+
         self.client_id = client_id
         self.topic_list = []
 
@@ -33,13 +35,6 @@ class Subscriber:
         # Restore previous client state
         self.storage = SubscriberStorage()
         self.__restore_state()
-
-        # Subscribe topics
-        for topic in self.storage.current_subscribed:
-            self.subscribe(topic)
-
-        # Get missing messages from Proxy Server
-        #self.__init_snapshot()
 
     def __hash__(self):
         return hash(self.client_id)
@@ -61,33 +56,9 @@ class Subscriber:
         pickle.dump(self.storage, output_file)
         output_file.close()
 
-    def __init_snapshot(self):
-        self.queue = []
-        msg = Message(self.storage.last_seq, key="GETSNAP".encode("utf-8"), body=str(self.topic_list).encode("utf-8"))
-        msg.send(self.snapshot)
-        
-        while True:
-            try:
-                msg = self.snapshot.recv_multipart()
-                key = msg[0]
-                
-            except Exception as e:
-                print(f"Error: {str(e)}")
-                break
-
-            if key == b"ENDSNAP":
-                print("Received snapshot")
-                break
-            else:
-                self.queue.append(msg)
-            time.sleep(0.1)
-        
-        self.__save_state()
-
     def subscribe(self, topic): 
         print(f"Subscribing \'{topic}\'.")
         if topic not in self.topic_list: self.topic_list.append(topic)
-        if topic not in self.storage.current_subscribed: self.storage.current_subscribed.append(topic)
 
         # Subscribe Topic
         msg = Message(self.storage.last_seq, key="SUBINFO".encode("utf-8"), body=(f"{self.client_id}-{topic}").encode("utf-8"))
@@ -98,13 +69,11 @@ class Subscriber:
     def unsubscribe(self, topic):
         print(f"Unsubscribing \'{topic}\'.")
         
-        # SEND INFO ABOUT THE TOPIC UNSUBSCRIBE TO PROXY
+        if topic in self.topic_list: self.topic_list.remove(topic)
+
+        # Unsubscribe Topic
         msg = Message(self.storage.last_seq, key="UNSUBINFO".encode("utf-8"), body=topic.encode("utf-8"))
         msg.send(self.snapshot)
-
-        if topic in self.topic_list: self.topic_list.remove(topic)
-        if topic in self.storage.current_subscribed: self.storage.current_subscribed.remove(topic)
-
 
         self.__save_state()
 
@@ -119,11 +88,12 @@ class Subscriber:
         except Exception as e:
             print(f"Error: {str(e)}")
 
-        self.storage.update_seq(msg.sequence)
-        self.__save_state()
+        if msg.key != b"NACK":
+            self.storage.update_seq(msg.sequence)
+            self.__save_state()
 
     def run(self):
-        s = SimpleXMLRPCServer(('127.0.0.1', 8081), allow_none=True, logRequests=False)
+        s = SimpleXMLRPCServer(('127.0.0.1', self.RMI_PORT), allow_none=True, logRequests=False)
         s.register_function(self.subscribe)
         s.register_function(self.unsubscribe)
         s.register_function(self.get)
