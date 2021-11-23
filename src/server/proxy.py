@@ -1,42 +1,13 @@
 import time
-import sys
-from random import randint
-from string import ascii_uppercase as uppercase
-from threading import Thread
-import threading
+import ast
 
 import zmq
 from zmq.eventloop.ioloop import IOLoop, PeriodicCallback
 from zmq.eventloop.zmqstream import ZMQStream
 
-import ast
-
-from zmq.devices import monitored_queue
-from random import randrange
-
-import binascii
-import os
-from random import randint
-
 import zmq
-
 from common import Message
 from .server_storage import ServerStorage
-
-def zpipe(ctx):
-    """
-    build inproc pipe for talking to threads
-    mimic pipe used in czmq zthread_fork.
-    Returns a pair of PAIRs connected via inproc
-    """
-    a = ctx.socket(zmq.PAIR)
-    b = ctx.socket(zmq.PAIR)
-    a.linger = b.linger = 0
-    a.hwm = b.hwm = 1
-    iface = "inproc://%s" % binascii.hexlify(os.urandom(8))
-    a.bind(iface)
-    b.connect(iface)
-    return a,b
     
 class Proxy:
     def __init__(self):
@@ -49,8 +20,6 @@ class Proxy:
         self.storage = ServerStorage()
         
         self.ctx = zmq.Context.instance()
-        self.updates, self.pipe = zpipe(self.ctx)
-        self.topics = {}
         
         self.__init_frontend()
         self.__init_backend()
@@ -121,7 +90,7 @@ class Proxy:
 
         if request == b"ACK-CLIENT":
             pass
-        if request == b"SUBINFO":
+        elif request == b"SUBINFO":
             print("SUB")
             client_id, topic_name = topic.decode("utf-8").split("-")
 
@@ -135,16 +104,13 @@ class Proxy:
         elif request == b"GETSNAP":
             print("GETSNAP")
             last_msg_seq = int.from_bytes(seq_number, byteorder='big')
-            print(last_msg_seq)
 
             topic_list_rcv = ast.literal_eval(topic.decode("utf-8"))
             message_list = []
 
             for topic in topic_list_rcv:
-                print(self.storage.get_message(topic, last_msg_seq))
                 message_list += self.storage.get_message(topic, last_msg_seq)
             
-            print(message_list)
             if len(message_list) != 0:
                 for msg_prev in message_list:
                     self.snapshot.send(identity, zmq.SNDMORE)
@@ -153,13 +119,11 @@ class Proxy:
             self.snapshot.send(identity, zmq.SNDMORE)
             msg = Message(0, key=b"ENDSNAP", body=b"Closing Snap")
             msg.send(self.snapshot)
-            print("here")
         else:
             print("E: bad request, aborting\n")
             return
 
     def start(self):
-        # Run reactor until process interrupted
         try:
             self.loop.start()
         except KeyboardInterrupt:
