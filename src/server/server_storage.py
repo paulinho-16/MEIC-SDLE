@@ -82,19 +82,6 @@ class ServerStorage:
                 message_after_value.append(msg)
         return message_after_value
     
-    def update_client(self, client_id, topic_id, last_msg_rcv):
-        client = self.db["clients"].get(client_id, None)
-        if client is None:
-            print(f"Error: Client {client_id} doesn't exist in storage", file=sys.stderr)
-            return None
-        
-        if client.get(topic_id, None) is None:
-            print(f"Error: Client {client_id} is not subscribed to topic {topic_id}", file=sys.stderr)
-            return None
-        
-        client["last_msg"] = last_msg_rcv
-        return self.db["clients"][client_id]
-    
     def create_publisher(self, publisher_id):
         publisher = self.db["publishers"].get(publisher_id, {})
 

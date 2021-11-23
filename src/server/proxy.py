@@ -13,8 +13,12 @@ from common import Logger
 class Proxy:
     def __init__(self):
         self.IP = "127.0.0.1"
+        # Connection with publishers
         self.FRONTEND_PORT = 6000
+
+        # Connection with clients
         self.BACKEND_PORT = 6001
+        
         self.SNAPSHOT_PORT = 5556
         self.ACK_PUB_PORT = 5557
 
@@ -33,9 +37,11 @@ class Proxy:
         self.logger.log("PROXY", "info", "Proxy initialized")
 
     def __init_backend(self):
-        self.backend = self.ctx.socket(zmq.PUB)
+        self.backend = self.ctx.socket(zmq.ROUTER)
         self.backend.bind(f"tcp://*:{self.BACKEND_PORT}")
-        
+        self.backend = ZMQStream(self.backend)
+        self.backend.on_recv(self.handle_backend)
+
     def __init_frontend(self):
         self.frontend = self.ctx.socket(zmq.ROUTER)
         self.frontend.bind(f"tcp://*:{self.FRONTEND_PORT}")
@@ -47,6 +53,27 @@ class Proxy:
         self.snapshot.bind("tcp://*:5556")
         self.snapshot = ZMQStream(self.snapshot)
         self.snapshot.on_recv(self.handle_snapshot)
+
+    def handle_backend(self, msg):
+        print(f"Backend {msg}")
+        identity = msg[0]
+        keyword = msg[1].decode("utf-8")
+        last_msg_seq = int(msg[2].decode("utf-8"))
+
+        if keyword == "GET":
+            print(f"Send message with {last_msg_seq}")
+            message_list = []
+            
+            #for topic in topic_list_rcv:
+            message_list = self.storage.get_message("A", last_msg_seq)
+            
+            if len(message_list) != 0:
+                self.backend.send(identity, zmq.SNDMORE)
+                message_list[0].send(self.backend)
+            else:
+                self.backend.send(identity, zmq.SNDMORE)
+                msg = Message(0, key=b"NACK", body="No messages to receive".encode("utf-8"))
+                msg.send(self.backend)
 
     def handle_frontend(self, msg):
         identity = msg[0]
@@ -95,9 +122,8 @@ class Proxy:
         topic = msg[2]
         seq_number = msg[3]
 
-        if request == b"ACK-CLIENT":
-            pass
-        elif request == b"SUBINFO":
+        if request == b"SUBINFO":
+            print("SUB")
             client_id, topic_name = topic.decode("utf-8").split("-")
 
             self.storage.add_topic(topic_name)
@@ -118,6 +144,7 @@ class Proxy:
             
             if len(message_list) != 0:
                 for msg_prev in message_list:
+                    print(msg_prev)
                     self.snapshot.send(identity, zmq.SNDMORE)
                     msg_prev.send(self.snapshot)
 
