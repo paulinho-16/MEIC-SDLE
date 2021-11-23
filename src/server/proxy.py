@@ -135,20 +135,21 @@ class Proxy:
         elif request == b"GETSNAP":
             print("GETSNAP")
             last_msg_seq = int.from_bytes(seq_number, byteorder='big')
+            print(last_msg_seq)
+
             topic_list_rcv = ast.literal_eval(topic.decode("utf-8"))
             message_list = []
 
             for topic in topic_list_rcv:
-                message_list = self.storage.get_message(topic, 0)
+                print(self.storage.get_message(topic, last_msg_seq))
+                message_list += self.storage.get_message(topic, last_msg_seq)
             
-            print("here")
+            print(message_list)
             if len(message_list) != 0:
-                print("here 2")
                 for msg_prev in message_list:
                     self.snapshot.send(identity, zmq.SNDMORE)
                     msg_prev.send(self.snapshot)
 
-            print("here")
             self.snapshot.send(identity, zmq.SNDMORE)
             msg = Message(0, key=b"ENDSNAP", body=b"Closing Snap")
             msg.send(self.snapshot)

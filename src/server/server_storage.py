@@ -7,16 +7,21 @@ class ServerStorage:
         For structure see example_db.json
         """
         self.sequence_number = 0
-        self.messages = []
+        
+        self.topics = {}
+        self.clients = {}
+        self.publishers = {}
+
         self.db = { "topics": {}, "clients": {}, "publishers": {} }
 
     def add_topic(self, topic_id):
         if self.db["topics"].get(topic_id, None) is not None:
             print(f"Error: Topic {topic_id} already exists in storage", file=sys.stderr)
+            return None
         
         topic = {
             "last_msg": -1,
-            "messages": {}
+            "messages": []
         } # Create default topic
 
         self.db["topics"][topic_id] = topic # Update storage
@@ -59,23 +64,23 @@ class ServerStorage:
             print(f"Error: Topic {topic_id} doesn't exist in storage", file=sys.stderr)
             return None
 
-        self.messages.append(message)
+        messages = topic["messages"]
+        messages.append(message)
 
-        # TODO CHANGE THIS
-
+        self.db["topics"][topic_id]["messages"] = messages
         return True
     
     def get_message(self, topic_id, real_seq):
-        if True:
-            return self.messages
-        
         topic = self.db["topics"].get(topic_id, None)
-        print(topic["messages"])
         if topic is None:
             print(f"Error: Topic {topic_id} doesn't exist in storage", file=sys.stderr)
             return { "content": "", "pub_id": -1, "pub_seq": -1 }
         
-        return topic["messages"].get(str(real_seq), { "content": "", "pub_id": -1, "pub_seq": -1 })
+        message_after_value = []
+        for msg in topic["messages"]:
+            if msg.sequence > real_seq:
+                message_after_value.append(msg)
+        return message_after_value
     
     def update_client(self, client_id, topic_id, last_msg_rcv):
         client = self.db["clients"].get(client_id, None)
