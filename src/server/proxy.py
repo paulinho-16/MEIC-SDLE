@@ -141,13 +141,18 @@ class Proxy:
             for topic in topic_list_rcv:
                 message_list = self.storage.get_message(topic, 0)
             
-            for msg_prev in message_list:
-                self.snapshot.send(identity, zmq.SNDMORE)
-                msg_prev.send(self.snapshot)
-            
+            print("here")
+            if len(message_list) != 0:
+                print("here 2")
+                for msg_prev in message_list:
+                    self.snapshot.send(identity, zmq.SNDMORE)
+                    msg_prev.send(self.snapshot)
+
+            print("here")
             self.snapshot.send(identity, zmq.SNDMORE)
             msg = Message(0, key=b"ENDSNAP", body=b"Closing Snap")
             msg.send(self.snapshot)
+            print("here")
         else:
             print("E: bad request, aborting\n")
             return

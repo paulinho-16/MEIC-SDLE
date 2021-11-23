@@ -67,6 +67,7 @@ class Subscriber:
         exit()
 
     def __init_snapshot(self):
+        self.queue = []
         msg = Message(self.storage.last_seq, key="GETSNAP".encode("utf-8"), body=str(self.topic_list).encode("utf-8"))
         msg.send(self.snapshot)
 
@@ -74,8 +75,7 @@ class Subscriber:
             try:
                 msg = self.snapshot.recv_multipart()
                 key = msg[0]
-                print("here")
-                print(msg)
+                
             except Exception as e:
                 print(f"Error: {str(e)}")
                 break
@@ -83,6 +83,8 @@ class Subscriber:
             if key == b"ENDSNAP":
                 print("Received snapshot")
                 break
+            else:
+                self.queue.append(msg)
             time.sleep(0.1)
 
     def subscribe(self, topic): 
@@ -110,8 +112,14 @@ class Subscriber:
         self.socket.setsockopt(zmq.UNSUBSCRIBE, topic)
 
     def get(self):
-        msg = Message.recv(self.socket)
-        msg.dump()
+        if self.queue:
+            msg = self.queue[0]
+            del self.queue[0]
+            print(msg)
+            return
+        else:
+            msg = Message.recv(self.socket)
+            msg.dump()
 
         msg_ack = Message(self.storage.last_seq, key="ACK-CLIENT".encode("utf-8"), body=str(msg.body).encode("utf-8"))
         msg_ack.send(self.snapshot)
