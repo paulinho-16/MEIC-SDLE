@@ -10,31 +10,36 @@ import zmq
 from zmq.devices import monitored_queue
 from random import randrange
 from common import Message
+from common import Logger
 
 class Publisher:
     def __init__(self, publisher_id):
         self.publisher_id = publisher_id
         self.connect()
+        
+        self.logger = Logger()
+        self.logger.log(f"PUBLISHER {self.publisher_id}","info","Initialized Publisher")
        
     def connect(self):
         self.ctx = zmq.Context()
         self.socket = self.ctx.socket(zmq.DEALER)
         self.socket.connect("tcp://127.0.0.1:6000")
         self.socket.linger = 0
-
         self.sequence = 0
 
     def put(self, topic, message):
-        key = topic #"%s" % (uppercase[randint(0,10)])
-        string = f"{self.publisher_id}-" + message #"%05d" % (randint(0,100000))
+        key = topic
+        string = f"{self.publisher_id}-" + message
         msg = Message(self.sequence)
         msg.key = key.encode("utf-8")
         msg.body = string.encode("utf-8")
-        msg.dump()
+
         try:
             msg.send(self.socket)
+            self.logger.log(f"PUBLISHER {self.publisher_id}","info",msg.dump())
+
         except Exception:
-            print("Error")
+            self.logger.log(f"PUBLISHER {self.publisher_id}","error",msg.dump())
 
         try:
             msg = self.socket.recv_multipart()
@@ -42,13 +47,13 @@ class Publisher:
             body = msg[1]
             sequence = msg[2]
         except Exception as e:
-            print(f"Error: {str(e)}")
+            self.logger.log(f"PUBLISHER {self.publisher_id}","error",str(e))
 
         if key == b"ACK":
-            print(f"Received ACK: {msg}")
+            self.logger.log(f"PUBLISHER {self.publisher_id}","info",f"Received ACK: {msg}")
             self.sequence += 1
         elif key == b"NACK":
-            print(f"Received NACK: {msg}")
+            self.logger.log(f"PUBLISHER {self.publisher_id}","info",f"Received NACK: {msg}")
             value = [int(s) for s in body.split() if s.isdigit()]
             self.sequence = value[0] + 1
 

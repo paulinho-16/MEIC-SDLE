@@ -56,4 +56,4 @@ class Message(object):
             size = len(self.body)
             data = repr(self.body)
         
-        print(f"[seq:{self.sequence}][key:{self.key}][size:{size}] {data}")
+        return f"[seq:{self.sequence}][key:{self.key}][size:{size}] {data}"

@@ -39,3 +39,4 @@ clean:
 	find . -name '__pycache__' -exec rm -rf "{}" +;
 	rm -f subscriber/storage-*.ser
 	rm -f storage.pickle
+	rm -f logger.log

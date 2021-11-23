@@ -10,6 +10,7 @@ from xmlrpc.server import SimpleXMLRPCServer
 # Local Imports
 from common import Message
 from .subscriber_storage import SubscriberStorage
+from common import Logger
 
 class Subscriber:
     def __init__(self, client_id):
@@ -42,6 +43,9 @@ class Subscriber:
         # Get missing messages from Proxy Server
         self.__init_snapshot()
 
+        self.logger = Logger()
+        self.logger.log(f"SUBSCRIBER {self.client_id}","info","Initalized Subscriber")
+
     def __hash__(self):
         return hash(self.client_id)
 
@@ -55,7 +59,7 @@ class Subscriber:
             output_file.close()
             pass
         except Exception as e:
-            print("Without previous state")
+            self.logger.log(f"SUBSCRIBER {self.client_id}","warning","No previous state")
 
     def __save_state(self):
         output_file = open(f"./subscriber/storage-{self.client_id}.ser", 'wb')
@@ -77,18 +81,18 @@ class Subscriber:
                 key = msg[0]
                 
             except Exception as e:
-                print(f"Error: {str(e)}")
+                self.logger.log(f"SUBSCRIBER {self.client_id}","warning",f"Snapshot not received {str(e)}")
                 break
 
             if key == b"ENDSNAP":
-                print("Received snapshot")
+                self.logger.log(f"SUBSCRIBER {self.client_id}","info","Snapshot received")
                 break
             else:
                 self.queue.append(msg)
             time.sleep(0.1)
 
     def subscribe(self, topic): 
-        print(f"Subscribing \'{topic}\'.")
+        self.logger.log(f"SUBSCRIBER {self.client_id}","info",f"Subscribing \'{topic}\'.")
         self.topic_list.append(topic)
 
         # SEND INFO ABOUT THE TOPIC SUBSCRIBE TO PROXY
@@ -100,7 +104,7 @@ class Subscriber:
         self.socket.setsockopt(zmq.CONFLATE, 1)
 
     def unsubscribe(self, topic):
-        print(f"Unsubscribing \'{topic}\'.")
+        self.logger.log(f"SUBSCRIBER {self.client_id}","info",f"Unsubscribing \'{topic}\'.")
         
         # SEND INFO ABOUT THE TOPIC UNSUBSCRIBE TO PROXY
         msg = Message(self.storage.last_seq, key="UNSUBINFO".encode("utf-8"), body=topic.encode("utf-8"))
@@ -119,7 +123,8 @@ class Subscriber:
             return
         else:
             msg = Message.recv(self.socket)
-            msg.dump()
+            self.logger.log(f"SUBSCRIBER {self.client_id}","info", f"Sent message: {msg.dump()}")
+           
 
         msg_ack = Message(self.storage.last_seq, key="ACK-CLIENT".encode("utf-8"), body=str(msg.body).encode("utf-8"))
         msg_ack.send(self.snapshot)
@@ -142,9 +147,10 @@ class Subscriber:
             try:
                 self.get()
             except Exception as e:
-                print(f"Error: {str(e)}")
+                self.logger.log(f"SUBSCRIBER {self.client_id}","error", f"Update error: {str(e)}")
                 break          
             count += 1
 
-        print("Subscriber received %d messages" % count)
+        self.logger.log(f"SUBSCRIBER {self.client_id}","info", f"Subscriber received {count} messages")
+        
     
