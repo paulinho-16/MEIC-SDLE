@@ -39,7 +39,7 @@ class Publisher:
             self.logger.log(f"PUBLISHER {self.publisher_id}","info",msg.dump())
 
         except Exception:
-            self.logger.log(f"PUBLISHER {self.publisher_id}","error",msg.dump())
+            self.logger.log(f"PUBLISHER {self.publisher_id}","error","Error on Sending Put message")
 
         try:
             msg = self.socket.recv_multipart()

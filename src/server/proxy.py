@@ -130,6 +130,7 @@ class Proxy:
             self.storage.subscribe(client_id, topic_name)
             self.logger.log('PROXY', 'info', f'Client {client_id} subscribed topic "{topic_name}"')
         elif request == b"UNSUBINFO":
+            # TODO: Receber topic-client_id e dar fix ao unsubscribe
             self.storage.unsubscribe(topic)
             self.logger.log('PROXY', 'info', f'Client {client_id} subscribed topic "{topic_name}"')
             # TODO:  Check if no subscriber remains, delete topic and all messages

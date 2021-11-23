@@ -90,7 +90,7 @@ class Subscriber:
             msg = Message.recv(self.socket)
             self.logger.log(f"SUBSCRIBER {self.client_id}","info", f"Sent message: {msg.dump()}")
         except Exception as e:
-            print(f"Error: {str(e)}")
+            self.logger.log(f"SUBSCRIBER {self.client_id}","error", f"Error on get Message sending message: {str(e)}")
 
         if msg.key != b"NACK":
             self.storage.update_seq(msg.sequence)
