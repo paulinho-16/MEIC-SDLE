@@ -3,24 +3,25 @@
         {
             "id": "topic-A",
             "messages": [
-                {
-                    "content": "This is the first message received",
-                    "real_seq": 0,
-                    "pub_id": "pub-0",
-                    "pub_seq": 0
-                },
-                {
-                    "content": "This is the second message received",
-                    "real_seq": 1,
-                    "pub_id": "pub-1",
-                    "pub_seq": 0
-                },
-                {
-                    "content": "This is the third message received",
-                    "real_seq": 2,
-                    "pub_id": "pub-1",
-                    "pub_seq": 1
-                }
+                [
+                    "This is the first message received",
+                     0,
+                    "pub-0",
+                    0
+                ],
+                [
+                    "This is the first message received",
+                     0,
+                    "pub-0",
+                    1
+                ],
+                [
+                    "This is the first message received",
+                     0,
+                    "pub-1",
+                    0
+                ]
+
             ]
         },
         {

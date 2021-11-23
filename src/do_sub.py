@@ -3,14 +3,8 @@ import sys
 import time
 
 def dogets(num):    
-    if num is None:
-        while True:
-            a = s.get()
-            print(a)
-    else:
-        for i in range(num):
-            a = s.get()
-            print(a)
+    for i in range(5):
+        a = s.get()
 
 if __name__ == '__main__':
     print(sys.argv)

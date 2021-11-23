@@ -23,9 +23,8 @@ class Subscriber:
         # Create Context and Connections
         self.ctx = zmq.Context()
 
-        self.socket = self.ctx.socket(zmq.SUB)
+        self.socket = self.ctx.socket(zmq.DEALER)
         self.socket.connect(f"tcp://{self.IP}:{self.SUB_PORT}")
-        #self.socket.RCVTIMEO = 1000
 
         self.snapshot = self.ctx.socket(zmq.DEALER)
         self.snapshot.linger = 0
@@ -40,7 +39,7 @@ class Subscriber:
             self.subscribe(topic)
 
         # Get missing messages from Proxy Server
-        self.__init_snapshot()
+        #self.__init_snapshot()
 
     def __hash__(self):
         return hash(self.client_id)
@@ -52,8 +51,8 @@ class Subscriber:
         try:
             output_file = open(f"./subscriber/storage-{self.client_id}.ser", 'rb')
             self.storage = pickle.load(output_file)
+            print(self.storage.current_subscribed)
             output_file.close()
-            pass
         except Exception as e:
             print("Without previous state")
 
@@ -62,15 +61,11 @@ class Subscriber:
         pickle.dump(self.storage, output_file)
         output_file.close()
 
-    def crash(self):
-        #print(0/0)
-        exit()
-
     def __init_snapshot(self):
         self.queue = []
         msg = Message(self.storage.last_seq, key="GETSNAP".encode("utf-8"), body=str(self.topic_list).encode("utf-8"))
         msg.send(self.snapshot)
-
+        
         while True:
             try:
                 msg = self.snapshot.recv_multipart()
@@ -86,18 +81,19 @@ class Subscriber:
             else:
                 self.queue.append(msg)
             time.sleep(0.1)
+        
+        self.__save_state()
 
     def subscribe(self, topic): 
         print(f"Subscribing \'{topic}\'.")
-        self.topic_list.append(topic)
+        if topic not in self.topic_list: self.topic_list.append(topic)
+        if topic not in self.storage.current_subscribed: self.storage.current_subscribed.append(topic)
 
-        # SEND INFO ABOUT THE TOPIC SUBSCRIBE TO PROXY
+        # Subscribe Topic
         msg = Message(self.storage.last_seq, key="SUBINFO".encode("utf-8"), body=(f"{self.client_id}-{topic}").encode("utf-8"))
         msg.send(self.snapshot)
-        
-        # Subscribe
-        self.socket.setsockopt(zmq.SUBSCRIBE, topic.encode("utf-8"))
-        self.socket.setsockopt(zmq.CONFLATE, 1)
+
+        self.__save_state()
 
     def unsubscribe(self, topic):
         print(f"Unsubscribing \'{topic}\'.")
@@ -107,22 +103,21 @@ class Subscriber:
         msg.send(self.snapshot)
 
         if topic in self.topic_list: self.topic_list.remove(topic)
+        if topic in self.storage.current_subscribed: self.storage.current_subscribed.remove(topic)
 
-        # Unsubscribe
-        self.socket.setsockopt(zmq.UNSUBSCRIBE, topic)
+
+        self.__save_state()
 
     def get(self):
-        if self.queue:
-            msg = self.queue[0]
-            del self.queue[0]
-            print(msg)
-            return
-        else:
+        last_recv = f"{self.storage.last_seq}"
+        msg = Message(0, key="GET".encode("utf-8"), body=last_recv.encode("utf-8"))
+        msg.send(self.socket)
+
+        try:
             msg = Message.recv(self.socket)
             msg.dump()
-
-        msg_ack = Message(self.storage.last_seq, key="ACK-CLIENT".encode("utf-8"), body=str(msg.body).encode("utf-8"))
-        msg_ack.send(self.snapshot)
+        except Exception as e:
+            print(f"Error: {str(e)}")
 
         self.storage.update_seq(msg.sequence)
         self.__save_state()
@@ -132,19 +127,5 @@ class Subscriber:
         s.register_function(self.subscribe)
         s.register_function(self.unsubscribe)
         s.register_function(self.get)
-        s.register_function(self.crash)
         s.serve_forever()
-
-    
-    def update(self):
-        count = 0
-        while count < 5:
-            try:
-                self.get()
-            except Exception as e:
-                print(f"Error: {str(e)}")
-                break          
-            count += 1
-
-        print("Subscriber received %d messages" % count)
     

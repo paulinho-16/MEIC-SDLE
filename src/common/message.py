@@ -1,5 +1,9 @@
 import struct
 
+class ACK(object):
+    ack_type = None
+    body = None
+
 class Message(object):
     """
     0: key (ID)

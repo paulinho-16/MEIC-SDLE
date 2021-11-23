@@ -2,7 +2,7 @@ class SubscriberStorage:
     def __init__(self):
         self.topic_list = [] # { id : topic }
         self.last_seq = 1
-        self.current_subscribed = ["A", "C", "E"]
+        self.current_subscribed = []
 
     def update_seq(self, seq):
         self.last_seq = seq
@@ -22,5 +22,11 @@ class SubscriberStorage:
     def request_message(self, num_seq, topic, client_id):
         return self.topic_list[topic].request_message(client_id, num_seq)
     
-    def hello(self):
-        print("world")
+    def state(self):
+        print(f"\n=========== SUBSCRIBER INFO ===========\n")
+
+        print(f"[-] Last message received= {self.last_seq}")
+        # Topics
+        # TODO: Log subscribed topics after refactoring structure
+
+        print(f"\n=======================================\n")
