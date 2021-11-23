@@ -123,8 +123,9 @@ class Proxy:
             self.storage.subscribe(client_id, topic_name)
         elif request == b"UNSUBINFO":
             print("UNSUB")
+            client_id, topic_name = topic.decode("utf-8").split("-")
 
-            self.storage.unsubscribe(topic)
+            self.storage.unsubscribe(client_id, topic_name)
             # Check if no subscriber remains, delete topic and all messages
         elif request == b"GETSNAP":
             print("GETSNAP")

@@ -72,7 +72,7 @@ class Subscriber:
         if topic in self.topic_list: self.topic_list.remove(topic)
 
         # Unsubscribe Topic
-        msg = Message(self.storage.last_seq, key="UNSUBINFO".encode("utf-8"), body=topic.encode("utf-8"))
+        msg = Message(self.storage.last_seq, key="UNSUBINFO".encode("utf-8"), body=(f"{self.client_id}-{topic}").encode("utf-8"))
         msg.send(self.snapshot)
 
         self.__save_state()

@@ -12,7 +12,7 @@ class ServerStorage:
         self.clients = {}
         self.publishers = {}
 
-        self.db = { "topics": {}, "clients": {}, "publishers": {} }
+        self.db = { "topics": {}, "publishers": {} }
 
     def add_topic(self, topic_id):
         if self.db["topics"].get(topic_id, None) is not None:
@@ -27,31 +27,34 @@ class ServerStorage:
         self.db["topics"][topic_id] = topic # Update storage
 
     def subscribe(self, client_id, topic_id):
-        client = self.db["clients"].get(client_id, {})
-        last_msg_rcv = client.get(topic_id, None) # Checks if topic already existed, if not creates it
-        if last_msg_rcv is not None:
+        topic_list = self.clients.get(client_id, [])
+
+        if topic_id in topic_list:
             print(f"Error: Client {client_id} is already subscribed to topic {topic_id}", file=sys.stderr)
             return None
+
         if self.db["topics"].get(topic_id, None) is None:
             self.add_topic(topic_id)
         
-        client[topic_id] = -1
-        self.db["clients"][client_id] = client # Updates storage
-        return self.db["clients"][client_id]
+        topic_list.append(topic_id)
+        self.clients[client_id] = topic_list # Updates storage
+        print(self.clients)
+        return self.clients[client_id]
     
     def unsubscribe(self, client_id, topic_id):
-        client = self.db["clients"].get(client_id, None)
+        client = self.clients.get(str(client_id), None)
         if client is None:
             print(f"Error: Client {client_id} doesn't exist in storage", file=sys.stderr)
             return None
+
         if self.db["topics"].get(topic_id, None) is None:
             print(f"Error: Topic {topic_id} doesn't exist in storage", file=sys.stderr)
             return None
-        if client.pop(topic_id, None) is None: # Remove topic from storage
-            print(f"Error: Client {client_id} isn't subscribed to topic {topic_id}", file=sys.stderr)
-            return None
-        self.db["clients"][client_id] = client # Updates storage
-        return self.db["clients"][client_id]
+
+        client.remove(topic_id)
+        self.clients[client_id] = client # Updates storage
+        print(self.clients)
+        return self.clients[client_id]
 
     def store_message(self, publisher_id, pub_seq, topic_id, content, message):
         publisher = self.db["publishers"].get(publisher_id, None)
@@ -120,7 +123,7 @@ class ServerStorage:
 
         # Clients
         print(f"[-] Clients")
-        clients = self.db["clients"]
+        clients = self.clients
         for client_id, client in clients.items():
             print(f"\t[x] client#{client_id}\n"
                   f"\t\t[+] Subscribed topics\n",

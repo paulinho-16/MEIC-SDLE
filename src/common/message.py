@@ -3,7 +3,12 @@ import struct
 class ACK(object):
     ack_type = None
     body = None
+    origin = None
 
+    def __init__(self, ack_type, body, origin):
+        pass
+
+    
 class Message(object):
     """
     0: key (ID)
@@ -11,9 +16,9 @@ class Message(object):
     2: body (STRING)
     """
 
+    sequence = 0 # int
     key = None # Topic (TOPIC)
     body = None # Text
-    sequence = 0 # int
     clients_waiting = [] # list of client ids
     
     def __init__(self, sequence, key=None, body=None):
