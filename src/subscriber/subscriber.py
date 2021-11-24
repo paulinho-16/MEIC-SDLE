@@ -22,6 +22,9 @@ class Subscriber:
         self.rmi_ip = rmi_ip
         self.rmi_port = int(rmi_port)
 
+        self.logger = Logger()
+        self.logger.log(f"SUBSCRIBER {self.client_id}","info","Initalized Subscriber")
+
         self.topic_list = []
 
         # Create Context and Connections
@@ -40,8 +43,7 @@ class Subscriber:
         self.storage = SubscriberStorage()
         self.__restore_state()
 
-        self.logger = Logger()
-        self.logger.log(f"SUBSCRIBER {self.client_id}","info","Initalized Subscriber")
+        
 
     def __hash__(self):
         return hash(self.client_id)
