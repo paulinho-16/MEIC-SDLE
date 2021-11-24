@@ -6,7 +6,7 @@ from zmq.eventloop.ioloop import IOLoop, PeriodicCallback
 from zmq.eventloop.zmqstream import ZMQStream
 
 import zmq
-from common import Message, IdentityMessage
+from common import IdentityMessage, ACKMessage, CompleteMessage
 from .server_storage import ServerStorage
 
 def message_order(message):
@@ -49,12 +49,11 @@ class Proxy:
 
     def __init_snapshot(self):
         self.snapshot = self.ctx.socket(zmq.ROUTER)
-        self.snapshot.bind("tcp://*:5556")
+        self.snapshot.bind(f"tcp://*:{self.SNAPSHOT_PORT}")
         self.snapshot = ZMQStream(self.snapshot)
         self.snapshot.on_recv(self.handle_snapshot)
 
     def handle_backend(self, msg):
-        print(f"Backend {msg}")
         identity_msg = IdentityMessage(msg)
 
         if identity_msg.key == "GET":
@@ -68,14 +67,17 @@ class Proxy:
             message_list = sorted(message_list, key=message_order)
             if len(message_list) != 0:
                 self.backend.send(identity_msg.identity, zmq.SNDMORE)
+                message_list[0].dump()
                 message_list[0].send(self.backend)
-
             else:
-                identity_msg.nack_response(self.backend, "No messages to receive")
+                ack = ACKMessage("NACK", "No messages to receive")
+                self.backend.send(identity_msg.identity, zmq.SNDMORE)
+                ack.send(self.backend)
 
     def handle_frontend(self, msg):
-        print(f"Frontend {msg}")
         identity_msg = IdentityMessage(msg)
+        identity_msg.dump()
+
         # If publisher not exists, create publisher
         self.storage.create_publisher(identity_msg.sender_id)
 
@@ -83,27 +85,30 @@ class Proxy:
         if identity_msg.sequence == (last_message_pub + 1):
             self.storage.recv_message_pub(identity_msg.sender_id)
             
-            pub_message = Message(self.storage.sequence_number, key=identity_msg.key.encode('utf-8'), body=identity_msg.body.encode('utf-8'))
+            pub_message = CompleteMessage(identity_msg.key, identity_msg.body, "", self.storage.sequence_number)
             stored_return = self.storage.store_message(identity_msg.sender_id, identity_msg.sequence, identity_msg.key, pub_message)
 
             if stored_return is None:
-                identity_msg.ack_response(self.frontend, f'The topic has 0 subscribers. The message was received, but not stored. Last received {last_message_pub}.')
+                ack = ACKMessage("ACK", f'The topic has 0 subscribers. The message was received, but not stored. Last received {last_message_pub}.')
+                self.frontend.send(identity_msg.identity, zmq.SNDMORE)
+                ack.send(self.frontend)
                 return
 
-            identity_msg.ack_response(self.frontend, f'Last received {last_message_pub}')
-            #pub_message.send(self.backend)
+            ack = ACKMessage("ACK", f'Last received {last_message_pub}')
+            self.frontend.send(identity_msg.identity, zmq.SNDMORE)
+            ack.send(self.frontend)
         else:
-            identity_msg.nack_response(self.frontend, f'Last received {last_message_pub}')
+            ack = ACKMessage("NACK", f'Last received {last_message_pub}')
+            self.frontend.send(identity_msg.identity, zmq.SNDMORE)
+            ack.send(self.frontend)
 
     def handle_snapshot(self, msg):
-        print(f"Snapshot {msg}")
-
         identity_msg = IdentityMessage(msg)
-        if identity_msg.key == "ACK_SUB":
+        if identity_msg.key == "SUB":
             self.storage.add_topic(identity_msg.body)
             self.storage.subscribe(identity_msg.sender_id, identity_msg.body)	
 
-        elif identity_msg.key == "ACK_UNSUB":
+        elif identity_msg.key == "UNSUB":
             self.storage.unsubscribe(identity_msg.sender_id, identity_msg.body)
             # TODO Check if no subscriber remains, delete topic and all messages
         
@@ -111,8 +116,9 @@ class Proxy:
             print("E: bad request, aborting\n")
             return None
 
-        identity_msg.ack_response(self.snapshot, "Subscribed with sucess")
-
+        ack = ACKMessage("ACK", "Sucess")
+        self.snapshot.send(identity_msg.identity, zmq.SNDMORE)
+        ack.send(self.snapshot)
     def start(self):
         try:
             self.loop.start()

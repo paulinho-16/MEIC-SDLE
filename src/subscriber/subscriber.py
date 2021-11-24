@@ -8,7 +8,7 @@ import zmq
 from xmlrpc.server import SimpleXMLRPCServer
 
 # Local Imports
-from common import Message
+from common import ACKMessage, CompleteMessage
 from .subscriber_storage import SubscriberStorage
 
 class Subscriber:
@@ -61,11 +61,11 @@ class Subscriber:
         print(f"Subscribing \'{topic}\'.")
         
         # Subscribe Topic
-        msg = Message(self.storage.last_seq, key="ACK_SUB".encode("utf-8"), body=(f"{self.client_id}-{topic}").encode("utf-8"))
+        msg = CompleteMessage("SUB", topic, str(self.client_id), self.storage.last_seq)
         msg.send(self.snapshot)
 
         try:
-            ack = Message.recv(self.snapshot)
+            ack = ACKMessage.recv(self.snapshot)
             ack.dump()
 
             if topic not in self.topic_list: self.topic_list.append(topic)
@@ -79,11 +79,11 @@ class Subscriber:
         print(f"Unsubscribing \'{topic}\'.")
         
         # Unsubscribe Topic
-        msg = Message(self.storage.last_seq, key="ACK_UNSUB".encode("utf-8"), body=(f"{self.client_id}-{topic}").encode("utf-8"))
+        msg = CompleteMessage("UNSUB", topic, str(self.client_id), self.storage.last_seq)
         msg.send(self.snapshot)
 
         try:
-            ack = Message.recv(self.snapshot)
+            ack = ACKMessage.recv(self.snapshot)
             ack.dump()
 
             if topic in self.topic_list: self.topic_list.remove(topic)
@@ -94,20 +94,28 @@ class Subscriber:
         self.__save_state()
 
     def get(self):
-        msg = Message(self.storage.last_seq, key="GET".encode("utf-8"), body=(f"{self.client_id}-{self.storage.last_seq}").encode("utf-8"))
+        msg = CompleteMessage("GET", "", str(self.client_id), self.storage.last_seq)
+        msg.dump()
         msg.send(self.socket)
 
         try:
-            msg = Message.recv(self.socket)
-            msg.dump()
+            msg = self.socket.recv_multipart()
+            print(msg)
+            print(len(msg))
+            if len(msg) == 2:
+                ack = ACKMessage.parse(msg)
+                ack.dump()
+            elif len(msg) == 4:
+                msg = CompleteMessage.parse(msg)
+                msg.dump()
 
+                self.storage.update_seq(msg.sequence)
+                self.__save_state()
+            else:
+                print("Invalid Size")
         except Exception as e:
-            print("Error: Failed to receive ACK from server.")
+            print(f"Error: {e}")
             return
-
-        if msg.key != b"NACK":
-            self.storage.update_seq(msg.sequence)
-            self.__save_state()
 
     def run(self):
         s = SimpleXMLRPCServer(('127.0.0.1', self.RMI_PORT), allow_none=True, logRequests=False)

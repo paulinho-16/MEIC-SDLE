@@ -9,7 +9,7 @@ import zmq
 
 from zmq.devices import monitored_queue
 from random import randrange
-from common import Message
+from common import ACKMessage, CompleteMessage
 
 class Publisher:
     def __init__(self, publisher_id):
@@ -25,29 +25,19 @@ class Publisher:
         self.sequence = 1
 
     def put(self, topic, message):
-        key = topic #"%s" % (uppercase[randint(0,10)])
-        string = f"{self.publisher_id}-" + message #"%05d" % (randint(0,100000))
-        msg = Message(self.sequence)
-        msg.key = key.encode("utf-8")
-        msg.body = string.encode("utf-8")
+        msg = CompleteMessage(topic, message, str(self.publisher_id), self.sequence)
         msg.dump()
+
         try:
             msg.send(self.socket)
-        except Exception:
-            print("Error")
 
-        try:
-            msg = self.socket.recv_multipart()
-            key = msg[0]
-            body = msg[1]
-            sequence = msg[2]
-
-            if key == b"ACK":
-                print(f"Received ACK: {msg}")
+            ack = ACKMessage.recv(self.socket) 
+            if ack.type_ack == "ACK":
+                print(f"Received ACK: {ack}")
                 self.sequence += 1
-            elif key == b"NACK":
-                print(f"Received NACK: {msg}")
-                value = [int(s) for s in body.split() if s.isdigit()]
+            elif ack.type_ack == "NACK":
+                print(f"Received NACK: {ack}")
+                value = [int(s) for s in ack.body.split() if s.isdigit()]
                 self.sequence = value[0] + 1
 
         except Exception as e:
