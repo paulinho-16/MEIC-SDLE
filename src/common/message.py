@@ -18,12 +18,12 @@ class IdentityMessage(object):
     
     def ack_response(self, socket, response_text):
         socket.send(self.identity, zmq.SNDMORE)
-        msg = Message(0, key=b"ACK", body="Sucess".encode("utf-8"))
+        msg = Message(0, key=b"ACK", body=response_text.encode("utf-8"))
         msg.send(socket)
 
     def nack_response(self, socket, response_text):
         socket.send(self.identity, zmq.SNDMORE)
-        msg = Message(0, key=b"NACK", body="Sucess".encode("utf-8"))
+        msg = Message(0, key=b"NACK", body=response_text.encode("utf-8"))
         msg.send(socket)
     
     def dump(self):

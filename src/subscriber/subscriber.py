@@ -94,7 +94,7 @@ class Subscriber:
         self.__save_state()
 
     def get(self):
-        msg = Message(0, key="GET".encode("utf-8"), body=(f"{self.client_id}-{self.storage.last_seq}").encode("utf-8"))
+        msg = Message(self.storage.last_seq, key="GET".encode("utf-8"), body=(f"{self.client_id}-{self.storage.last_seq}").encode("utf-8"))
         msg.send(self.socket)
 
         try:

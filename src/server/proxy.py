@@ -55,27 +55,23 @@ class Proxy:
 
     def handle_backend(self, msg):
         print(f"Backend {msg}")
-        identity = msg[0]
-        keyword = msg[1].decode("utf-8")
+        identity_msg = IdentityMessage(msg)
 
-        client_id, seq = msg[2].decode("utf-8").split("-")
-        last_msg_seq = int(seq)
-
-        if keyword == "GET":
+        if identity_msg.key == "GET":
             message_list = []
 
-            topic_list_client = self.storage.get_topics(client_id)
+            topic_list_client = self.storage.get_topics(identity_msg.sender_id)
+            print(f"sequence {identity_msg.sequence}")
             for topic in topic_list_client:
-                message_list += self.storage.get_message(topic, last_msg_seq)
+                message_list += self.storage.get_message(topic, identity_msg.sequence)
             
             message_list = sorted(message_list, key=message_order)
             if len(message_list) != 0:
-                self.backend.send(identity, zmq.SNDMORE)
+                self.backend.send(identity_msg.identity, zmq.SNDMORE)
                 message_list[0].send(self.backend)
+
             else:
-                self.backend.send(identity, zmq.SNDMORE)
-                msg = Message(0, key=b"NACK", body="No messages to receive".encode("utf-8"))
-                msg.send(self.backend)
+                identity_msg.nack_response(self.backend, "No messages to receive")
 
     def handle_frontend(self, msg):
         print(f"Frontend {msg}")

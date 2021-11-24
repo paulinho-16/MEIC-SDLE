@@ -41,16 +41,19 @@ class Publisher:
             key = msg[0]
             body = msg[1]
             sequence = msg[2]
+
+            if key == b"ACK":
+                print(f"Received ACK: {msg}")
+                self.sequence += 1
+            elif key == b"NACK":
+                print(f"Received NACK: {msg}")
+                value = [int(s) for s in body.split() if s.isdigit()]
+                self.sequence = value[0] + 1
+
         except Exception as e:
             print(f"Error: {str(e)}")
 
-        if key == b"ACK":
-            print(f"Received ACK: {msg}")
-            self.sequence += 1
-        elif key == b"NACK":
-            print(f"Received NACK: {msg}")
-            value = [int(s) for s in body.split() if s.isdigit()]
-            self.sequence = value[0] + 1
+        # TODO try send the message 3 times
 
     def run(self):
         s = SimpleXMLRPCServer(('127.0.0.1', 8080), allow_none=True, logRequests=False)
