@@ -12,14 +12,15 @@ from common import ACKMessage, CompleteMessage
 from .subscriber_storage import SubscriberStorage
 
 class Subscriber:
-    def __init__(self, client_id):
-        # Parameters
+    def __init__(self, client_id, rmi_ip, rmi_port):
         self.IP = "127.0.0.1"
         self.SUB_PORT = 6001
         self.DEALER_PORT = 5556
-        self.RMI_PORT = 8081
 
         self.client_id = client_id
+        self.rmi_ip = rmi_ip
+        self.rmi_port = int(rmi_port)
+
         self.topic_list = []
 
         # Create Context and Connections
@@ -118,7 +119,7 @@ class Subscriber:
             return
 
     def run(self):
-        s = SimpleXMLRPCServer(('127.0.0.1', self.RMI_PORT), allow_none=True, logRequests=False)
+        s = SimpleXMLRPCServer((self.rmi_ip, self.rmi_port), allow_none=True, logRequests=False)
         s.register_function(self.subscribe)
         s.register_function(self.unsubscribe)
         s.register_function(self.get)

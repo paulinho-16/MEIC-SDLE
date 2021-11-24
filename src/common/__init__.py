@@ -1,2 +1,2 @@
 #from .helpers import *
-from .message import Message, IdentityMessage, ACKMessage, CompleteMessage
+from .message import IdentityMessage, ACKMessage, CompleteMessage

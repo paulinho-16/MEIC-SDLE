@@ -12,14 +12,20 @@ from random import randrange
 from common import ACKMessage, CompleteMessage
 
 class Publisher:
-    def __init__(self, publisher_id):
+    def __init__(self, publisher_id, rmi_ip, rmi_port):
         self.publisher_id = publisher_id
+        self.rmi_ip = rmi_ip
+        self.rmi_port = rmi_port
+
+        self.IP = "127.0.0.1"
+        self.PORT = 6000
+
         self.connect()
        
     def connect(self):
         self.ctx = zmq.Context()
         self.socket = self.ctx.socket(zmq.DEALER)
-        self.socket.connect("tcp://127.0.0.1:6000")
+        self.socket.connect(f"tcp://{self.IP}:{self.PORT}")
         self.socket.linger = 0
         self.socket.RCVTIMEO = 1500
         self.sequence = 1
@@ -46,6 +52,6 @@ class Publisher:
         # TODO try send the message 3 times
 
     def run(self):
-        s = SimpleXMLRPCServer(('127.0.0.1', 8080), allow_none=True, logRequests=False)
+        s = SimpleXMLRPCServer((self.rmi_ip, int(self.rmi_port)), allow_none=True, logRequests=False)
         s.register_function(self.put)
         s.serve_forever()

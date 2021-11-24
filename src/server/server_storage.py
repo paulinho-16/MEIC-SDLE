@@ -1,4 +1,3 @@
-from common import Message
 import sys
 
 class ServerStorage:
