@@ -29,7 +29,7 @@ class ACKMessage(object):
         else:
             data = repr(self.body)
         
-        print(f"[TYPE_ACK: {self.type_ack}] {data} ")
+        return f"[TYPE_ACK: {self.type_ack}] {data} "
 
 class CompleteMessage(object):
     key = None # Topic
@@ -65,7 +65,7 @@ class CompleteMessage(object):
         else:
             data = repr(self.body)
         
-        print(f"[seq:{self.sequence}][sender:{self.sender_id}][key:{self.key}] {data} ")
+        return f"[seq:{self.sequence}][sender:{self.sender_id}][key:{self.key}] {data} "
 
 class IdentityMessage(object):
     identity = None
@@ -89,4 +89,4 @@ class IdentityMessage(object):
         else:
             data = repr(self.body)
         
-        print(f"[seq:{self.sequence}][sender:{self.sender_id}][key:{self.key}] {data} [identity:{self.identity}]")
+        return f"[seq:{self.sequence}][sender:{self.sender_id}][key:{self.key}] {data} [identity:{self.identity}]"

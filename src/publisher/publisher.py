@@ -36,22 +36,23 @@ class Publisher:
 
     def put(self, topic, message):
         msg = CompleteMessage(topic, message, str(self.publisher_id), self.sequence)
-        msg.dump()
+        self.logger.log(f"PUBLISHER {self.publisher_id}", "info", msg.dump())
 
         try:
             msg.send(self.socket)
 
             ack = ACKMessage.recv(self.socket) 
+            self.logger.log(f"PUBLISHER {self.publisher_id}", "info", ack.dump())
+
             if ack.type_ack == "ACK":
-                print(f"Received ACK: {ack}")
                 self.sequence += 1
             elif ack.type_ack == "NACK":
-                print(f"Received NACK: {ack}")
                 value = [int(s) for s in ack.body.split() if s.isdigit()]
                 self.sequence = value[0] + 1
 
+            self.logger.log(f"PUBLISHER {self.publisher_id}", "info", f"Next Sequence Number: {self.sequence}")
         except Exception as e:
-            self.logger.log(f"PUBLISHER {self.publisher_id}","error",str(e))
+            self.logger.log(f"PUBLISHER {self.publisher_id}", "error", "Not received response from server.")
 
         # TODO try send the message 3 times
 

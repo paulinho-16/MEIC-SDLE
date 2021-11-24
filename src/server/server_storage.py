@@ -15,7 +15,6 @@ class ServerStorage:
 
     def add_topic(self, topic_id):
         if self.db["topics"].get(topic_id, None) is not None:
-            print(f"Error: Topic {topic_id} already exists in storage", file=sys.stderr)
             return None
         
         topic = {
@@ -39,11 +38,11 @@ class ServerStorage:
             self.add_topic(topic_id)
         
         topic_list.append(topic_id)
-        self.clients[client_id] = topic_list # Updates storage
+        self.clients[client_id] = topic_list
         return self.clients[client_id]
     
     def unsubscribe(self, client_id, topic_id):
-        client = self.clients.get(str(client_id), None)
+        client = self.clients.get(client_id, None)
         if client is None:
             print(f"Error: Client {client_id} doesn't exist in storage", file=sys.stderr)
             return None
@@ -53,7 +52,7 @@ class ServerStorage:
             return None
 
         if topic_id in client: client.remove(topic_id)
-        self.clients[client_id] = client # Updates storage
+        self.clients[client_id] = client
         return self.clients[client_id]
 
     def store_message(self, publisher_id, pub_seq, topic_id, message):
@@ -71,7 +70,7 @@ class ServerStorage:
         messages.append(message)
 
         self.db["topics"][topic_id]["messages"] = messages
-        return True
+        return self.db["topics"][topic_id]["messages"]
     
     def get_message(self, topic_id, real_seq):
         topic = self.db["topics"].get(topic_id, None)
