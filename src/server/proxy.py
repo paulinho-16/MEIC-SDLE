@@ -133,12 +133,20 @@ class Proxy:
 
             self.storage.add_topic(topic_name)
             self.storage.subscribe(client_id, topic_name)
+
+            self.snapshot.send(identity, zmq.SNDMORE)
+            msg = Message(0, key=b"ACK", body="Sucess".encode("utf-8"))
+            msg.send(self.snapshot)
         elif request == b"ACK_UNSUB":
             print("UNSUB")
             client_id, topic_name = topic.decode("utf-8").split("-")
 
             self.storage.unsubscribe(client_id, topic_name)
-            # Check if no subscriber remains, delete topic and all messages
+            # TODO Check if no subscriber remains, delete topic and all messages
+
+            self.snapshot.send(identity, zmq.SNDMORE)
+            msg = Message(0, key=b"ACK", body="Sucess".encode("utf-8"))
+            msg.send(self.snapshot)
         else:
             print("E: bad request, aborting\n")
             return

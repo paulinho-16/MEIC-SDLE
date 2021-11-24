@@ -54,7 +54,7 @@ class ServerStorage:
             print(f"Error: Topic {topic_id} doesn't exist in storage", file=sys.stderr)
             return None
 
-        client.remove(topic_id)
+        if topic_id in client: client.remove(topic_id)
         self.clients[client_id] = client # Updates storage
         print(self.clients)
         return self.clients[client_id]

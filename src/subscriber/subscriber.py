@@ -30,6 +30,7 @@ class Subscriber:
 
         self.snapshot = self.ctx.socket(zmq.DEALER)
         self.snapshot.linger = 0
+        self.snapshot.RCVTIMEO = 1000
         self.snapshot.connect(f"tcp://{self.IP}:{self.DEALER_PORT}")
 
         # Restore previous client state
@@ -58,11 +59,18 @@ class Subscriber:
 
     def subscribe(self, topic): 
         print(f"Subscribing \'{topic}\'.")
-        if topic not in self.topic_list: self.topic_list.append(topic)
-
+        
         # Subscribe Topic
         msg = Message(self.storage.last_seq, key="ACK_SUB".encode("utf-8"), body=(f"{self.client_id}-{topic}").encode("utf-8"))
         msg.send(self.snapshot)
+
+        try:
+            msg = Message.recv(self.snapshot)
+            msg.dump()
+
+            if topic not in self.topic_list: self.topic_list.append(topic)
+        except Exception as e:
+            print("Failed to receive ACK from server.")
 
         self.__save_state()
 
@@ -74,6 +82,12 @@ class Subscriber:
         msg = Message(self.storage.last_seq, key="ACK_UNSUB".encode("utf-8"), body=(f"{self.client_id}-{topic}").encode("utf-8"))
         msg.send(self.snapshot)
 
+        try:
+            msg = Message.recv(self.snapshot)
+            msg.dump()
+        except Exception as e:
+            print("Failed to receive ACK from server.")
+            
         self.__save_state()
 
     def get(self):
