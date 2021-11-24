@@ -1,2 +1,2 @@
 #from .helpers import *
-from .message import Message
+from .message import Message, IdentityMessage

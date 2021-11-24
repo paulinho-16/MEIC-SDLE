@@ -6,7 +6,7 @@ from zmq.eventloop.ioloop import IOLoop, PeriodicCallback
 from zmq.eventloop.zmqstream import ZMQStream
 
 import zmq
-from common import Message
+from common import Message, IdentityMessage
 from .server_storage import ServerStorage
 
 def message_order(message):
@@ -62,19 +62,13 @@ class Proxy:
         last_msg_seq = int(seq)
 
         if keyword == "GET":
-            print(f"Send message with {last_msg_seq}")
             message_list = []
 
             topic_list_client = self.storage.get_topics(client_id)
             for topic in topic_list_client:
                 message_list += self.storage.get_message(topic, last_msg_seq)
             
-            message_list = sorted(message_list, key=self.message_order)
-
-            for i in message_list:
-                print(i.sequence, end="_")
-            print("\n")
-            
+            message_list = sorted(message_list, key=message_order)
             if len(message_list) != 0:
                 self.backend.send(identity, zmq.SNDMORE)
                 message_list[0].send(self.backend)
@@ -85,64 +79,43 @@ class Proxy:
 
     def handle_frontend(self, msg):
         print(f"Frontend {msg}")
-        identity = msg[0]
-        topic = msg[1]
-        pub_id, body = msg[2].decode('utf-8').split("-")
-        seq_number = msg[3]
-        pub_id = int(pub_id)
-        seq = int.from_bytes(seq_number, byteorder='big')
-        self.frontend.send(identity, zmq.SNDMORE)
-
+        identity_msg = IdentityMessage(msg)
         # If publisher not exists, create publisher
-        self.storage.create_publisher(pub_id)
-        last_message_pub = self.storage.last_message_pub(pub_id)
+        self.storage.create_publisher(identity_msg.sender_id)
 
-        if seq == (last_message_pub + 1):
-            self.storage.recv_message_pub(pub_id)
+        last_message_pub = self.storage.last_message_pub(identity_msg.sender_id)
+        if identity_msg.sequence == (last_message_pub + 1):
+            self.storage.recv_message_pub(identity_msg.sender_id)
             
-            pub_message = Message(self.storage.sequence_number, key=topic, body=body.encode('utf-8'))
-            stored_return = self.storage.store_message(pub_id, seq, topic.decode("utf-8"), body.encode('utf-8'), pub_message)
+            pub_message = Message(self.storage.sequence_number, key=identity_msg.key.encode('utf-8'), body=identity_msg.body.encode('utf-8'))
+            stored_return = self.storage.store_message(identity_msg.sender_id, identity_msg.sequence, identity_msg.key, pub_message)
 
             if stored_return is None:
-                last_recv = f'The topic has 0 subscribers. The message was received, but not stored. Last received {last_message_pub}.'
-                msg = Message(self.storage.sequence_number, key=b"ACK", body=last_recv.encode("utf-8"))
-                msg.send(self.frontend)
+                identity_msg.ack_response(self.frontend, f'The topic has 0 subscribers. The message was received, but not stored. Last received {last_message_pub}.')
                 return
 
-            last_recv = f'Last received {last_message_pub}'
-            msg = Message(self.storage.sequence_number, key=b"ACK", body=last_recv.encode("utf-8"))
-            msg.send(self.frontend)
-
-            pub_message.send(self.backend)
+            identity_msg.ack_response(self.frontend, f'Last received {last_message_pub}')
+            #pub_message.send(self.backend)
         else:
-            last_recv = f'Last received {last_message_pub}'
-            msg = Message(seq, key=b"NACK", body=last_recv.encode("utf-8"))
-            msg.send(self.frontend)
+            identity_msg.nack_response(self.frontend, f'Last received {last_message_pub}')
 
     def handle_snapshot(self, msg):
         print(f"Snapshot {msg}")
-        identity = msg[0]
-        request = msg[1]
-        topic = msg[2]
-        seq_number = msg[3]
 
-        client_id, topic_name = topic.decode("utf-8").split("-")
+        identity_msg = IdentityMessage(msg)
+        if identity_msg.key == "ACK_SUB":
+            self.storage.add_topic(identity_msg.body)
+            self.storage.subscribe(identity_msg.sender_id, identity_msg.body)	
 
-        if request == b"ACK_SUB":
-            self.storage.add_topic(topic_name)
-            self.storage.subscribe(client_id, topic_name)
-
-        elif request == b"ACK_UNSUB":
-            self.storage.unsubscribe(client_id, topic_name)
+        elif identity_msg.key == "ACK_UNSUB":
+            self.storage.unsubscribe(identity_msg.sender_id, identity_msg.body)
             # TODO Check if no subscriber remains, delete topic and all messages
-
+        
         else:
             print("E: bad request, aborting\n")
             return None
 
-        self.snapshot.send(identity, zmq.SNDMORE)
-        msg = Message(0, key=b"ACK", body="Sucess".encode("utf-8"))
-        msg.send(self.snapshot)
+        identity_msg.ack_response(self.snapshot, "Subscribed with sucess")
 
     def start(self):
         try:

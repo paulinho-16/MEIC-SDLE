@@ -3,7 +3,7 @@ import sys
 import time
 
 def dogets(num):    
-    for i in range(5):
+    for i in range(int(num)):
         a = s.get()
 
 if __name__ == '__main__':
@@ -17,7 +17,7 @@ if __name__ == '__main__':
         s.subscribe(sys.argv[2])
     elif sys.argv[1] == "get":
         try:
-            dogets(int(sys.argv[2]))
+            dogets(sys.argv[2])
         except ValueError:
             print("Argument [nTimes] must be an integer")
     elif sys.argv[1] == "unsub":

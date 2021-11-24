@@ -1,35 +1,45 @@
 import struct
+import zmq
 
-class ACK_Message(object):
-    ack_type = None
+class IdentityMessage(object):
+    identity = None
+
+    key = None
     body = None
-    origin = None
 
-    def __init__(self, ack_type, body, origin):
+    sender_id = None
+    sequence = None
+
+    def __init__(self, msg):
+        self.identity = msg[0]
+        self.key = msg[1].decode("utf-8")
+        self.sender_id, self.body = msg[2].decode("utf-8").split("-")
+        self.sequence = int.from_bytes(msg[3], byteorder='big')
+    
+    def ack_response(self, socket, response_text):
+        socket.send(self.identity, zmq.SNDMORE)
+        msg = Message(0, key=b"ACK", body="Sucess".encode("utf-8"))
+        msg.send(socket)
+
+    def nack_response(self, socket, response_text):
+        socket.send(self.identity, zmq.SNDMORE)
+        msg = Message(0, key=b"NACK", body="Sucess".encode("utf-8"))
+        msg.send(socket)
+    
+    def dump(self):
         pass
 
 class Message(object):
-    """
-    0: key (ID)
-    1: sequence (INTEGER)
-    2: body (STRING)
-    """
-
-    sequence = 0 # int
-    key = None # Topic (TOPIC)
+    sequence = None # int
+    key = None # Topic
     body = None # Text
-    clients_waiting = [] # list of client ids
-    
+
     def __init__(self, sequence, key=None, body=None):
-        #assert isinstance(sequence, int)
+        assert isinstance(sequence, int)
+
         self.sequence = sequence
         self.key = key
         self.body = body
-        self.clients_waiting = 0
-
-    def store(self, dict):
-        if self.key is not None and self.body is not None:
-            dict[self.key] = self
 
     def send(self, socket):
         """Send key-value message to socket; any empty frames are sent as such."""
@@ -38,23 +48,16 @@ class Message(object):
         body = b'' if self.body is None else self.body
         socket.send_multipart([ key, body, seq_s ])
 
-    def add_client(client_id):
-        clients_waiting.append(client_id)
-
-    def update(self, client_id):
-        if client_id in clients_waiting:
-            clients_waiting.remove(client_id)
-        else:
-            print('Error: Client with id {client_id} has already received the message with id {self.sequence} from topic {self.key.name}')
-
-        if not clients_waiting:
-            return -1
-        return 0
+    def send_ack(self, socket):
+        pass
         
     @classmethod
     def recv(cls, socket):
         topic, body, seq = socket.recv_multipart()
         return cls(int.from_bytes(seq, byteorder='big'), key=topic, body=body)
+
+    def recv_ack(self, socket):
+        pass
 
     def dump(self):
         if self.body is None:

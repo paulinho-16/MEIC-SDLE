@@ -48,13 +48,12 @@ class Subscriber:
         try:
             output_file = open(f"./storage/storage-{self.client_id}.ser", 'rb')
             self.storage = pickle.load(output_file)
-            print(self.storage.current_subscribed)
             output_file.close()
         except Exception as e:
             print("Without previous state")
 
     def __save_state(self):
-        output_file = open(f"./subscriber/storage-{self.client_id}.ser", 'wb')
+        output_file = open(f"./storage/storage-{self.client_id}.ser", 'wb')
         pickle.dump(self.storage, output_file)
         output_file.close()
 
@@ -99,14 +98,14 @@ class Subscriber:
         msg.send(self.socket)
 
         try:
-            ack = Message.recv(self.socket)
-            ack.dump()
+            msg = Message.recv(self.socket)
+            msg.dump()
 
         except Exception as e:
             print("Error: Failed to receive ACK from server.")
             return
 
-        if ack.key != b"NACK":
+        if msg.key != b"NACK":
             self.storage.update_seq(msg.sequence)
             self.__save_state()
 

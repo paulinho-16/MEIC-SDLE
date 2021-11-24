@@ -57,7 +57,7 @@ class ServerStorage:
         self.clients[client_id] = client # Updates storage
         return self.clients[client_id]
 
-    def store_message(self, publisher_id, pub_seq, topic_id, content, message):
+    def store_message(self, publisher_id, pub_seq, topic_id, message):
         publisher = self.db["publishers"].get(publisher_id, None)
         if publisher is None:
             print(f"Error: Publisher {publisher_id} doesn't exist in storage", file=sys.stderr)
