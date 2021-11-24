@@ -10,6 +10,7 @@ from xmlrpc.server import SimpleXMLRPCServer
 # Local Imports
 from common import ACKMessage, CompleteMessage
 from .subscriber_storage import SubscriberStorage
+from common import Logger
 
 class Subscriber:
     def __init__(self, client_id, rmi_ip, rmi_port):
@@ -39,6 +40,9 @@ class Subscriber:
         self.storage = SubscriberStorage()
         self.__restore_state()
 
+        self.logger = Logger()
+        self.logger.log(f"SUBSCRIBER {self.client_id}","info","Initalized Subscriber")
+
     def __hash__(self):
         return hash(self.client_id)
 
@@ -51,7 +55,7 @@ class Subscriber:
             self.storage = pickle.load(output_file)
             output_file.close()
         except Exception as e:
-            print("Without previous state")
+            self.logger.log(f"SUBSCRIBER {self.client_id}","warning","No previous state")
 
     def __save_state(self):
         output_file = open(f"./storage/storage-{self.client_id}.ser", 'wb')
@@ -77,7 +81,7 @@ class Subscriber:
         self.__save_state()
 
     def unsubscribe(self, topic):
-        print(f"Unsubscribing \'{topic}\'.")
+        self.logger.log(f"SUBSCRIBER {self.client_id}","info",f"Unsubscribing \'{topic}\'.")
         
         # Unsubscribe Topic
         msg = CompleteMessage("UNSUB", topic, str(self.client_id), self.storage.last_seq)

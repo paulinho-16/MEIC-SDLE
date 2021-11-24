@@ -8,6 +8,8 @@ from zmq.eventloop.zmqstream import ZMQStream
 import zmq
 from common import IdentityMessage, ACKMessage, CompleteMessage
 from .server_storage import ServerStorage
+from common import Logger
+
 
 def message_order(message):
     return message.sequence
@@ -34,6 +36,9 @@ class Proxy:
 
         # REACTOR
         self.loop = IOLoop.instance()
+
+        self.logger = Logger()
+        self.logger.log("PROXY", "info", "Proxy initialized")
 
     def __init_backend(self):
         self.backend = self.ctx.socket(zmq.ROUTER)

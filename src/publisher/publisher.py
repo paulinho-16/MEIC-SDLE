@@ -10,6 +10,7 @@ import zmq
 from zmq.devices import monitored_queue
 from random import randrange
 from common import ACKMessage, CompleteMessage
+from common import Logger
 
 class Publisher:
     def __init__(self, publisher_id, rmi_ip, rmi_port):
@@ -21,6 +22,9 @@ class Publisher:
         self.PORT = 6000
 
         self.connect()
+        
+        self.logger = Logger()
+        self.logger.log(f"PUBLISHER {self.publisher_id}","info","Initialized Publisher")
        
     def connect(self):
         self.ctx = zmq.Context()
@@ -47,7 +51,7 @@ class Publisher:
                 self.sequence = value[0] + 1
 
         except Exception as e:
-            print(f"Error: {str(e)}")
+            self.logger.log(f"PUBLISHER {self.publisher_id}","error",str(e))
 
         # TODO try send the message 3 times
 
