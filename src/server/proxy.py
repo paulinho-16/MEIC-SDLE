@@ -8,7 +8,10 @@ from zmq.eventloop.zmqstream import ZMQStream
 import zmq
 from common import Message
 from .server_storage import ServerStorage
-    
+
+def message_order(message):
+    return message.sequence
+
 class Proxy:
     def __init__(self):
         self.IP = "127.0.0.1"
@@ -49,9 +52,6 @@ class Proxy:
         self.snapshot.bind("tcp://*:5556")
         self.snapshot = ZMQStream(self.snapshot)
         self.snapshot.on_recv(self.handle_snapshot)
-
-    def message_order(self, message):
-        return message.sequence
 
     def handle_backend(self, msg):
         print(f"Backend {msg}")
@@ -118,7 +118,6 @@ class Proxy:
             last_recv = f'Last received {last_message_pub}'
             msg = Message(seq, key=b"NACK", body=last_recv.encode("utf-8"))
             msg.send(self.frontend)
-        #self.storage.state()
 
     def handle_snapshot(self, msg):
         print(f"Snapshot {msg}")
@@ -127,32 +126,26 @@ class Proxy:
         topic = msg[2]
         seq_number = msg[3]
 
-        if request == b"ACK_SUB":
-            print("SUB")
-            client_id, topic_name = topic.decode("utf-8").split("-")
+        client_id, topic_name = topic.decode("utf-8").split("-")
 
+        if request == b"ACK_SUB":
             self.storage.add_topic(topic_name)
             self.storage.subscribe(client_id, topic_name)
 
-            self.snapshot.send(identity, zmq.SNDMORE)
-            msg = Message(0, key=b"ACK", body="Sucess".encode("utf-8"))
-            msg.send(self.snapshot)
         elif request == b"ACK_UNSUB":
-            print("UNSUB")
-            client_id, topic_name = topic.decode("utf-8").split("-")
-
             self.storage.unsubscribe(client_id, topic_name)
             # TODO Check if no subscriber remains, delete topic and all messages
 
-            self.snapshot.send(identity, zmq.SNDMORE)
-            msg = Message(0, key=b"ACK", body="Sucess".encode("utf-8"))
-            msg.send(self.snapshot)
         else:
             print("E: bad request, aborting\n")
-            return
+            return None
+
+        self.snapshot.send(identity, zmq.SNDMORE)
+        msg = Message(0, key=b"ACK", body="Sucess".encode("utf-8"))
+        msg.send(self.snapshot)
 
     def start(self):
         try:
             self.loop.start()
         except KeyboardInterrupt:
-            pass
+            return None

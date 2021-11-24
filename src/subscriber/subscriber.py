@@ -26,6 +26,7 @@ class Subscriber:
         self.ctx = zmq.Context()
 
         self.socket = self.ctx.socket(zmq.DEALER)
+        self.socket.RCVTIMEO = 1000
         self.socket.connect(f"tcp://{self.IP}:{self.SUB_PORT}")
 
         self.snapshot = self.ctx.socket(zmq.DEALER)
@@ -45,7 +46,7 @@ class Subscriber:
 
     def __restore_state(self):
         try:
-            output_file = open(f"./subscriber/storage-{self.client_id}.ser", 'rb')
+            output_file = open(f"./storage/storage-{self.client_id}.ser", 'rb')
             self.storage = pickle.load(output_file)
             print(self.storage.current_subscribed)
             output_file.close()
@@ -65,29 +66,32 @@ class Subscriber:
         msg.send(self.snapshot)
 
         try:
-            msg = Message.recv(self.snapshot)
-            msg.dump()
+            ack = Message.recv(self.snapshot)
+            ack.dump()
 
             if topic not in self.topic_list: self.topic_list.append(topic)
         except Exception as e:
-            print("Failed to receive ACK from server.")
+            print("Error: Failed to receive ACK from server.")
+            return
 
         self.__save_state()
 
     def unsubscribe(self, topic):
         print(f"Unsubscribing \'{topic}\'.")
-        if topic in self.topic_list: self.topic_list.remove(topic)
-
+        
         # Unsubscribe Topic
         msg = Message(self.storage.last_seq, key="ACK_UNSUB".encode("utf-8"), body=(f"{self.client_id}-{topic}").encode("utf-8"))
         msg.send(self.snapshot)
 
         try:
-            msg = Message.recv(self.snapshot)
-            msg.dump()
+            ack = Message.recv(self.snapshot)
+            ack.dump()
+
+            if topic in self.topic_list: self.topic_list.remove(topic)
         except Exception as e:
-            print("Failed to receive ACK from server.")
-            
+            print("Error: Failed to receive ACK from server.")
+            return
+
         self.__save_state()
 
     def get(self):
@@ -95,13 +99,14 @@ class Subscriber:
         msg.send(self.socket)
 
         try:
-            # TODO - Add timeout after not receiving anything after X seconds
-            msg = Message.recv(self.socket)
-            msg.dump()
-        except Exception as e:
-            print(f"Error: {str(e)}")
+            ack = Message.recv(self.socket)
+            ack.dump()
 
-        if msg.key != b"NACK":
+        except Exception as e:
+            print("Error: Failed to receive ACK from server.")
+            return
+
+        if ack.key != b"NACK":
             self.storage.update_seq(msg.sequence)
             self.__save_state()
 

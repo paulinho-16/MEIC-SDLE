@@ -7,12 +7,12 @@ from os.path import exists
 def save_pickle():
     #print("Saving...")
 
-    with open('storage.pickle', 'wb') as handle:
+    with open('./storage/proxy.ser', 'wb') as handle:
         pickle.dump(proxy.storage, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 def load_pickle():
     print("Loading...")
-    with open('storage.pickle', 'rb') as handle:
+    with open('./storage/proxy.ser', 'rb') as handle:
         storage = pickle.load(handle)
     return storage
 

@@ -41,7 +41,6 @@ class ServerStorage:
         
         topic_list.append(topic_id)
         self.clients[client_id] = topic_list # Updates storage
-        print(self.clients)
         return self.clients[client_id]
     
     def unsubscribe(self, client_id, topic_id):
@@ -56,7 +55,6 @@ class ServerStorage:
 
         if topic_id in client: client.remove(topic_id)
         self.clients[client_id] = client # Updates storage
-        print(self.clients)
         return self.clients[client_id]
 
     def store_message(self, publisher_id, pub_seq, topic_id, content, message):
