@@ -1,6 +1,6 @@
 import struct
 
-class ACK(object):
+class ACK_Message(object):
     ack_type = None
     body = None
     origin = None
@@ -8,7 +8,6 @@ class ACK(object):
     def __init__(self, ack_type, body, origin):
         pass
 
-    
 class Message(object):
     """
     0: key (ID)

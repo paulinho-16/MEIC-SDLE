@@ -50,18 +50,30 @@ class Proxy:
         self.snapshot = ZMQStream(self.snapshot)
         self.snapshot.on_recv(self.handle_snapshot)
 
+    def message_order(self, message):
+        return message.sequence
+
     def handle_backend(self, msg):
         print(f"Backend {msg}")
         identity = msg[0]
         keyword = msg[1].decode("utf-8")
-        last_msg_seq = int(msg[2].decode("utf-8"))
+
+        client_id, seq = msg[2].decode("utf-8").split("-")
+        last_msg_seq = int(seq)
 
         if keyword == "GET":
             print(f"Send message with {last_msg_seq}")
             message_list = []
+
+            topic_list_client = self.storage.get_topics(client_id)
+            for topic in topic_list_client:
+                message_list += self.storage.get_message(topic, last_msg_seq)
             
-            #for topic in topic_list_rcv:
-            message_list = self.storage.get_message("A", last_msg_seq)
+            message_list = sorted(message_list, key=self.message_order)
+
+            for i in message_list:
+                print(i.sequence, end="_")
+            print("\n")
             
             if len(message_list) != 0:
                 self.backend.send(identity, zmq.SNDMORE)
@@ -115,37 +127,18 @@ class Proxy:
         topic = msg[2]
         seq_number = msg[3]
 
-        if request == b"SUBINFO":
+        if request == b"ACK_SUB":
             print("SUB")
             client_id, topic_name = topic.decode("utf-8").split("-")
 
             self.storage.add_topic(topic_name)
             self.storage.subscribe(client_id, topic_name)
-        elif request == b"UNSUBINFO":
+        elif request == b"ACK_UNSUB":
             print("UNSUB")
             client_id, topic_name = topic.decode("utf-8").split("-")
 
             self.storage.unsubscribe(client_id, topic_name)
             # Check if no subscriber remains, delete topic and all messages
-        elif request == b"GETSNAP":
-            print("GETSNAP")
-            last_msg_seq = int.from_bytes(seq_number, byteorder='big')
-
-            topic_list_rcv = ast.literal_eval(topic.decode("utf-8"))
-            message_list = []
-
-            for topic in topic_list_rcv:
-                message_list += self.storage.get_message(topic, last_msg_seq)
-            
-            if len(message_list) != 0:
-                for msg_prev in message_list:
-                    print(msg_prev)
-                    self.snapshot.send(identity, zmq.SNDMORE)
-                    msg_prev.send(self.snapshot)
-
-            self.snapshot.send(identity, zmq.SNDMORE)
-            msg = Message(0, key=b"ENDSNAP", body=b"Closing Snap")
-            msg.send(self.snapshot)
         else:
             print("E: bad request, aborting\n")
             return

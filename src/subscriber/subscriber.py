@@ -61,28 +61,27 @@ class Subscriber:
         if topic not in self.topic_list: self.topic_list.append(topic)
 
         # Subscribe Topic
-        msg = Message(self.storage.last_seq, key="SUBINFO".encode("utf-8"), body=(f"{self.client_id}-{topic}").encode("utf-8"))
+        msg = Message(self.storage.last_seq, key="ACK_SUB".encode("utf-8"), body=(f"{self.client_id}-{topic}").encode("utf-8"))
         msg.send(self.snapshot)
 
         self.__save_state()
 
     def unsubscribe(self, topic):
         print(f"Unsubscribing \'{topic}\'.")
-        
         if topic in self.topic_list: self.topic_list.remove(topic)
 
         # Unsubscribe Topic
-        msg = Message(self.storage.last_seq, key="UNSUBINFO".encode("utf-8"), body=(f"{self.client_id}-{topic}").encode("utf-8"))
+        msg = Message(self.storage.last_seq, key="ACK_UNSUB".encode("utf-8"), body=(f"{self.client_id}-{topic}").encode("utf-8"))
         msg.send(self.snapshot)
 
         self.__save_state()
 
     def get(self):
-        last_recv = f"{self.storage.last_seq}"
-        msg = Message(0, key="GET".encode("utf-8"), body=last_recv.encode("utf-8"))
+        msg = Message(0, key="GET".encode("utf-8"), body=(f"{self.client_id}-{self.storage.last_seq}").encode("utf-8"))
         msg.send(self.socket)
 
         try:
+            # TODO - Add timeout after not receiving anything after X seconds
             msg = Message.recv(self.socket)
             msg.dump()
         except Exception as e:

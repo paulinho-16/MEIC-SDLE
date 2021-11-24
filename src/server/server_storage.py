@@ -20,11 +20,14 @@ class ServerStorage:
             return None
         
         topic = {
-            "last_msg": -1,
+            "last_msg": 0,
             "messages": []
         } # Create default topic
 
         self.db["topics"][topic_id] = topic # Update storage
+
+    def get_topics(self, client_id):
+        return self.clients[client_id]
 
     def subscribe(self, client_id, topic_id):
         topic_list = self.clients.get(client_id, [])
@@ -90,7 +93,7 @@ class ServerStorage:
 
         if publisher == {}:
             self.db["publishers"][publisher_id] = publisher
-            self.db["publishers"][publisher_id]["last_msg"] = -1
+            self.db["publishers"][publisher_id]["last_msg"] = 0
         return self.db["publishers"][publisher_id]
 
     def last_message_pub(self, pub_id):
