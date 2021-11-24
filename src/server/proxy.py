@@ -56,7 +56,7 @@ class Proxy:
         self.snapshot = self.ctx.socket(zmq.ROUTER)
         self.snapshot.bind(f"tcp://*:{self.SNAPSHOT_PORT}")
         self.snapshot = ZMQStream(self.snapshot)
-        self.snapshot.on_recv(self.handle_snapshot)
+        self.snapshot.on_recv(self.handle_subs)
 
     def handle_backend(self, msg):
         identity_msg = IdentityMessage(msg)
@@ -110,12 +110,12 @@ class Proxy:
             self.frontend.send(identity_msg.identity, zmq.SNDMORE)
             ack.send(self.frontend)
 
-    def handle_snapshot(self, msg):
+    def handle_subs(self, msg):
         identity_msg = IdentityMessage(msg)
         if identity_msg.key == "SUB":
             self.logger.log("PROXY", "warning", "Subscribe on topic {identity_msg.body} from client {identity_msg.sender_id}")
             self.storage.add_topic(identity_msg.body)
-            self.storage.subscribe(identity_msg.sender_id, identity_msg.body)	
+            self.storage.subscribe(identity_msg.sender_id, identity_msg.body)
 
         elif identity_msg.key == "UNSUB":
             self.logger.log("PROXY", "warning", "Unsubscribe on topic {identity_msg.body} from client {identity_msg.sender_id}")
@@ -125,7 +125,7 @@ class Proxy:
             self.logger.log("PROXY", "warning", "Bad request on snapshot.")
             return None
 
-        ack = ACKMessage("ACK", "Sucess")
+        ack = ACKMessage("ACK", "Success")
         self.snapshot.send(identity_msg.identity, zmq.SNDMORE)
         ack.send(self.snapshot)
 
