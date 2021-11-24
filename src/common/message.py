@@ -1,59 +1,92 @@
 import struct
+import zmq
 
-class Message(object):
-    """
-    0: key (ID)
-    1: sequence (INTEGER)
-    2: body (STRING)
-    """
+class ACKMessage(object):
+    type_ack = None
+    body = None
 
-    key = None # Topic (TOPIC)
-    body = None # Text
-    sequence = 0 # int
-    clients_waiting = [] # list of client ids
-    
-    def __init__(self, sequence, key=None, body=None):
-        assert isinstance(sequence, int)
-        self.sequence = sequence
-        self.key = key
+    def __init__(self, type_ack, body):
+        self.type_ack = type_ack
         self.body = body
-        self.clients_waiting = 0
-
-    def store(self, dict):
-        if self.key is not None and self.body is not None:
-            dict[self.key] = self
 
     def send(self, socket):
-        """Send key-value message to socket; any empty frames are sent as such."""
-        key = b'' if self.key is None else self.key
-        seq_s = struct.pack('!l', self.sequence)
-        body = b'' if self.body is None else self.body
-        socket.send_multipart([ key, body, seq_s ])
+        type_ack = b'' if self.type_ack is None else self.type_ack.encode("utf-8")
+        body = b'' if self.body is None else self.body.encode("utf-8")
+        socket.send_multipart([ type_ack, body ])
 
-    def add_client(client_id):
-        clients_waiting.append(client_id)
-
-    def update(self, client_id):
-        if client_id in clients_waiting:
-            clients_waiting.remove(client_id)
-        else:
-            print('Error: Client with id {client_id} has already received the message with id {self.sequence} from topic {self.key.name}')
-
-        if not clients_waiting:
-            return -1
-        return 0
-        
     @classmethod
     def recv(cls, socket):
-        topic, body, seq = socket.recv_multipart()
-        return cls(int.from_bytes(seq, byteorder='big'), key=topic, body=body)
+        type_ack, body = socket.recv_multipart()
+        return cls(type_ack.decode("utf-8"), body.decode("utf-8"))
+    
+    @classmethod
+    def parse(cls, msg):
+        return cls(msg[0].decode("utf-8"), msg[1].decode("utf-8"))
 
     def dump(self):
         if self.body is None:
-            size = 0
             data = 'NULL'
         else:
-            size = len(self.body)
             data = repr(self.body)
         
-        print(f"[seq:{self.sequence}][key:{self.key}][size:{size}] {data}")
+        print(f"[TYPE_ACK: {self.type_ack}] {data} ")
+
+class CompleteMessage(object):
+    key = None # Topic
+    body = None # Text
+    sender_id = None
+    sequence = None # int
+
+    def __init__(self, key, body, sender_id, sequence):
+        self.key = key
+        self.body = body
+        self.sender_id = sender_id
+        self.sequence = sequence
+
+    def send(self, socket):
+        key = b'' if self.key is None else self.key.encode("utf-8")
+        body = b'' if self.body is None else self.body.encode("utf-8")
+        sender_id = b'' if self.sender_id is None else self.sender_id.encode("utf-8")
+        sequence = struct.pack('!l', self.sequence)
+        socket.send_multipart([ key, body, sender_id, sequence ])
+
+    @classmethod
+    def recv(cls, socket):
+        key, body, sender_id, sequence = socket.recv_multipart()
+        return cls(key.decode("utf-8"), body.decode("utf-8"), sender_id.decode("utf-8"), int.from_bytes(sequence, byteorder='big'))
+
+    @classmethod
+    def parse(cls, msg):
+        return cls(msg[0].decode("utf-8"), msg[1].decode("utf-8"), msg[2].decode("utf-8"), int.from_bytes(msg[3], byteorder='big'))
+
+    def dump(self):
+        if self.body is None:
+            data = 'NULL'
+        else:
+            data = repr(self.body)
+        
+        print(f"[seq:{self.sequence}][sender:{self.sender_id}][key:{self.key}] {data} ")
+
+class IdentityMessage(object):
+    identity = None
+
+    key = None
+    body = None
+    sender_id = None
+    sequence = None
+
+    def __init__(self, msg):
+        self.identity = msg[0]
+
+        self.key = msg[1].decode("utf-8")
+        self.body = msg[2].decode("utf-8")
+        self.sender_id = msg[3].decode("utf-8")
+        self.sequence = int.from_bytes(msg[4], byteorder='big')
+    
+    def dump(self):
+        if self.body is None:
+            data = 'NULL'
+        else:
+            data = repr(self.body)
+        
+        print(f"[seq:{self.sequence}][sender:{self.sender_id}][key:{self.key}] {data} [identity:{self.identity}]")
