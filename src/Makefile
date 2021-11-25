@@ -12,31 +12,31 @@ proxy:
 
 # Run a publisher
 publisher:
-	@$(PYTHON) pub_run.py
+	@$(PYTHON) pub_run.py $(filter-out $@, $(MAKECMDGOALS))
 
 # Run a subscriber
 subscriber:
-	@$(PYTHON) sub_run.py
+	@$(PYTHON) sub_run.py $(filter-out $@, $(MAKECMDGOALS))
 
 # Publish a new message to a given topic
-put: 
-	@$(PYTHON) do_put.py $(filter-out $@, $(MAKECMDGOALS))
+put:
+	@$(PYTHON) exec_command.py $(MAKECMDGOALS)
 
 # Get a message from a given topic
 get:
-	@$(PYTHON) do_sub.py $(MAKECMDGOALS)
+	@$(PYTHON) exec_command.py $(MAKECMDGOALS)
 
 # Subscribe a new topic
 sub:
-	@$(PYTHON) do_sub.py $(MAKECMDGOALS)
+	@$(PYTHON) exec_command.py $(MAKECMDGOALS)
 
 # Unsubscribe a given topic
 unsub:
-	@$(PYTHON) do_sub.py $(MAKECMDGOALS)
+	@$(PYTHON) exec_command.py $(MAKECMDGOALS)
 
 # Remove generated folders and files
 clean:
 	find . -name '__pycache__' -exec rm -rf "{}" +;
 	rm -f subscriber/storage-*.ser
-	rm -f storage.pickle
+	rm -rf storage/
 	rm -f logger.log

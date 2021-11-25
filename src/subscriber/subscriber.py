@@ -76,7 +76,7 @@ class Subscriber:
             self.logger.log(f"SUBSCRIBER {self.client_id}", "info", ack.dump())
 
             if topic not in self.topic_list: self.topic_list.append(topic)
-        except Exception as e:
+        except Exception:
             self.logger.log(f"SUBSCRIBER {self.client_id}", "warning", "Failed to receive ACK from server.")
             return
 
@@ -120,7 +120,7 @@ class Subscriber:
 
                 self.storage.update_seq(msg.sequence)
                 self.__save_state()
-        except Exception as e:
+        except Exception:
             self.logger.log(f"SUBSCRIBER {self.client_id}", "warning", "Failed to receive ACK from server.")
             return
 
