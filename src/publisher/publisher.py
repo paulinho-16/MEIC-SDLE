@@ -35,27 +35,36 @@ class Publisher:
         self.socket.RCVTIMEO = 1500
 
     def put(self, topic, message):
-        msg = CompleteMessage(topic, message, str(self.publisher_id), self.sequence)
-        self.logger.log(f"PUBLISHER {self.publisher_id}", "info", msg.dump())
+        num_send = 0
+        while num_send < 2:
+            msg = CompleteMessage(topic, message, str(self.publisher_id), self.sequence)
+            self.logger.log(f"PUBLISHER {self.publisher_id}", "info", msg.dump())
 
-        try:
-            msg.send(self.socket) # DONTWAIT, so messages don't queue
+            try:
+                msg.send(self.socket)
 
-            ack = ACKMessage.recv(self.socket) 
-            self.logger.log(f"PUBLISHER {self.publisher_id}", "info", ack.dump())
+                ack = ACKMessage.recv(self.socket) 
+                self.logger.log(f"PUBLISHER {self.publisher_id}", "info", ack.dump())
+                
 
-            if ack.type_ack == "ACK":
-                self.sequence += 1
-            elif ack.type_ack == "NACK":
-                value = [int(s) for s in ack.body.split() if s.isdigit()]
-                self.sequence = value[0] + 1
+                if ack.type_ack == "ACK":
+                    self.sequence += 1
+                    self.logger.log(f"PUBLISHER {self.publisher_id}", "info", f"Next Sequence Number: {self.sequence}")
+                    return None
 
-            self.logger.log(f"PUBLISHER {self.publisher_id}", "info", f"Next Sequence Number: {self.sequence}")
-        except Exception as e:
-            self.logger.log(f"PUBLISHER {self.publisher_id}", "error", "Not received response from server.")
-            self.socket.close()
-            self.connect()
-        # TODO try send the message 3 times
+                elif ack.type_ack == "NACK":
+                    value = [int(s) for s in ack.body.split() if s.isdigit()]
+                    self.sequence = value[0] + 1
+                    self.logger.log(f"PUBLISHER {self.publisher_id}", "info", f"Next Sequence Number: {self.sequence}. Resending message... ")
+                    num_send += 1
+                    time.sleep(0.1)
+
+            except Exception as e:
+                self.logger.log(f"PUBLISHER {self.publisher_id}", "error", "Not received response from server. Aborting...")
+
+                self.socket.close()
+                self.connect()
+                return None
 
     def run(self):
         s = SimpleXMLRPCServer((self.rmi_ip, int(self.rmi_port)), allow_none=True, logRequests=False)
