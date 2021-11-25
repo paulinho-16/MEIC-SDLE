@@ -91,7 +91,7 @@ class Proxy:
                 message_list[0].send(self.backend)
             else:
                 self.logger.log("PROXY", "warning", "Without messages to send to SUBSCRIBER.")
-                ack = ACKMessage("NACK", "No messages to receive")
+                ack = ACKMessage("ACK", "No messages to receive")
                 self.backend.send(identity_msg.identity, zmq.SNDMORE)
                 ack.send(self.backend)
         self.storage.state()
