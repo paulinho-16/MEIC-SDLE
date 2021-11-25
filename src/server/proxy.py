@@ -79,6 +79,8 @@ class Proxy:
         if identity_msg.key == "GET":
             message_list = []
             topic_list_client = self.storage.get_topics(identity_msg.sender_id)
+
+            self.storage.update_messages(identity_msg.sender_id, identity_msg.sequence)
             for topic, id_when_sub in topic_list_client:
                 highest = max(id_when_sub, identity_msg.sequence)
                 message_list += self.storage.get_message(topic, highest)
@@ -107,7 +109,7 @@ class Proxy:
         if identity_msg.sequence == (last_message_pub + 1):
             self.storage.recv_message_pub(identity_msg.sender_id)
             pub_message = CompleteMessage(identity_msg.key, identity_msg.body, "", self.storage.sequence_number)
-            stored_return = self.storage.store_message(identity_msg.sender_id, identity_msg.sequence, identity_msg.key, pub_message)
+            stored_return = self.storage.store_message(identity_msg.sender_id, identity_msg.key, pub_message)
             self.logger.log("PROXY", "info", f"PUB Sequence Number: {identity_msg.sequence} | PROXY Sequence Number: {self.storage.sequence_number}")
 
             if stored_return is None:
@@ -138,7 +140,7 @@ class Proxy:
         elif identity_msg.key == "UNSUB":
             self.logger.log("PROXY", "warning", f"Unsubscribe on topic {identity_msg.body} from client {identity_msg.sender_id}")
             self.storage.unsubscribe(identity_msg.sender_id, identity_msg.body)
-            # TODO Check if no subscriber remains, delete topic and all messages
+
         else:
             self.logger.log("PROXY", "warning", "Bad request on snapshot.")
             self.storage.state()

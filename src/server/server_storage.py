@@ -2,9 +2,6 @@ import sys
 
 class ServerStorage:
     def __init__(self) -> None:
-        """
-        
-        """
         self.sequence_number = 0
         
         self.topics = {}
@@ -57,9 +54,19 @@ class ServerStorage:
             if topic_id in topic: client.remove(topic)
         self.clients[client_id] = client
 
+        self.update_topics(topic_id)
+
         return self.clients[client_id]
 
-    def store_message(self, publisher_id, pub_seq, topic_id, message):
+    def update_topics(self, topic_id):
+        for client in self.clients:
+            for topic in client:
+                if topic[0] == topic_id:
+                    return
+
+        self.topics.pop(topic_id)
+
+    def store_message(self, publisher_id, topic_id, message):
         publisher = self.publishers.get(publisher_id, None)
         if publisher is None:
             print(f"Error: Publisher {publisher_id} doesn't exist in storage", file=sys.stderr)
@@ -109,6 +116,28 @@ class ServerStorage:
         self.sequence_number += 1
         publisher["last_msg"] += 1
         return self.publishers[publisher_id]
+
+    def update_messages(self, client_id, sequence_number):
+        client = self.clients[client_id]
+        for i in range(len(client)):
+            if client[i][1] < sequence_number:
+                client[i][1] = sequence_number
+        
+        self.clients[client_id] = client
+        
+        min_last_rcv = sequence_number
+        for cl_id, client in self.clients.items():
+            for topic_id, last_msg_rcv in client:
+                if last_msg_rcv < min_last_rcv:
+                    min_last_rcv = last_msg_rcv
+        
+        for topic_id, topic in self.topics.items():
+            new_messages = []
+            for message in topic["messages"]:
+                if message.sequence > min_last_rcv:
+                    new_messages.append(message)
+            
+            self.topics[topic_id]["messages"] = new_messages
 
     def state(self):
         print(f"\n=========== PROXY INFO ===========\n")
