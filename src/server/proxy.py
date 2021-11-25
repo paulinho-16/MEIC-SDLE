@@ -1,5 +1,6 @@
 import time
 import ast
+import pickle
 
 import zmq
 from zmq.eventloop.ioloop import IOLoop, PeriodicCallback
@@ -16,29 +17,29 @@ def message_order(message):
 
 class Proxy:
     def __init__(self):
+        self.logger = Logger()
+        self.logger.log("PROXY", "info", "Proxy initialized")
+
+        self.storage = ServerStorage()
+        self.load_storage()
+        self.periodic_callback = PeriodicCallback(self.handle_storage, 1000)
+
         self.IP = "127.0.0.1"
         # Connection with publishers
         self.FRONTEND_PORT = 6000
-
         # Connection with clients
         self.BACKEND_PORT = 6001
-        
         self.SNAPSHOT_PORT = 5556
         self.ACK_PUB_PORT = 5557
 
-        self.storage = ServerStorage()
-        
+
         self.ctx = zmq.Context.instance()
-        
         self.__init_frontend()
         self.__init_backend()
         self.__init_snapshot()
 
         # REACTOR
         self.loop = IOLoop.instance()
-
-        self.logger = Logger()
-        self.logger.log("PROXY", "info", "Proxy initialized")
 
     def __init_backend(self):
         self.backend = self.ctx.socket(zmq.ROUTER)
@@ -58,18 +59,32 @@ class Proxy:
         self.snapshot = ZMQStream(self.snapshot)
         self.snapshot.on_recv(self.handle_subs)
 
+    def load_storage(self):
+        try:
+            output_file = open(f"./storage/proxy.ser", 'rb')
+            self.storage = pickle.load(output_file)
+            output_file.close()
+        except Exception as e:
+            print(e)
+            self.logger.log(f"PROXY", "warning", "No previous state. New state initialize")
+
+    def handle_storage(self):
+        output_file = open(f"./storage/proxy.ser", 'wb')
+        pickle.dump(self.storage, output_file, protocol=pickle.HIGHEST_PROTOCOL)
+        output_file.close()
+
     def handle_backend(self, msg):
         identity_msg = IdentityMessage(msg)
         self.logger.log("PROXY", "info", "Received GET request.")
 
         if identity_msg.key == "GET":
             message_list = []
-
             topic_list_client = self.storage.get_topics(identity_msg.sender_id)
             for topic in topic_list_client:
                 message_list += self.storage.get_message(topic, identity_msg.sequence)
-            
+
             message_list = sorted(message_list, key=message_order)
+
             if len(message_list) != 0:
                 self.backend.send(identity_msg.identity, zmq.SNDMORE)
                 self.logger.log("PROXY", "info", f"Sending message: {message_list[0].dump()}")
@@ -131,6 +146,7 @@ class Proxy:
 
     def start(self):
         try:
+            self.periodic_callback.start()
             self.loop.start()
         except KeyboardInterrupt:
             return None

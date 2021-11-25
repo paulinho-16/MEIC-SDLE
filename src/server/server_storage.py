@@ -25,6 +25,9 @@ class ServerStorage:
         self.db["topics"][topic_id] = topic # Update storage
 
     def get_topics(self, client_id):
+        clients = self.clients.get(client_id, None)
+        if clients is None:
+            self.clients[client_id] = []
         return self.clients[client_id]
 
     def subscribe(self, client_id, topic_id):

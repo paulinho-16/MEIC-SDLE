@@ -18,28 +18,28 @@ class Publisher:
         self.rmi_ip = rmi_ip
         self.rmi_port = rmi_port
 
-        self.IP = "127.0.0.1"
-        self.PORT = 6000
-
-        self.connect()
-        
         self.logger = Logger()
         self.logger.log(f"PUBLISHER {self.publisher_id}","info","Initialized Publisher")
-       
+
+        self.IP = "127.0.0.1"
+        self.PORT = 6000
+        self.sequence = 1
+
+        self.connect()
+
     def connect(self):
         self.ctx = zmq.Context()
         self.socket = self.ctx.socket(zmq.DEALER)
         self.socket.connect(f"tcp://{self.IP}:{self.PORT}")
         self.socket.linger = 0
         self.socket.RCVTIMEO = 1500
-        self.sequence = 1
 
     def put(self, topic, message):
         msg = CompleteMessage(topic, message, str(self.publisher_id), self.sequence)
         self.logger.log(f"PUBLISHER {self.publisher_id}", "info", msg.dump())
 
         try:
-            msg.send(self.socket)
+            msg.send(self.socket) # DONTWAIT, so messages don't queue
 
             ack = ACKMessage.recv(self.socket) 
             self.logger.log(f"PUBLISHER {self.publisher_id}", "info", ack.dump())
@@ -53,7 +53,8 @@ class Publisher:
             self.logger.log(f"PUBLISHER {self.publisher_id}", "info", f"Next Sequence Number: {self.sequence}")
         except Exception as e:
             self.logger.log(f"PUBLISHER {self.publisher_id}", "error", "Not received response from server.")
-
+            self.socket.close()
+            self.connect()
         # TODO try send the message 3 times
 
     def run(self):
