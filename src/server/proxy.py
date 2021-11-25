@@ -1,5 +1,3 @@
-import time
-import ast
 import pickle
 
 import zmq
@@ -10,6 +8,7 @@ import zmq
 from common import IdentityMessage, ACKMessage, CompleteMessage
 from .server_storage import ServerStorage
 from common import Logger
+from pathlib import Path
 
 
 def message_order(message):
@@ -61,16 +60,16 @@ class Proxy:
 
     def load_storage(self):
         try:
-            output_file = open(f"./storage/proxy.ser", 'rb')
+            output_file = open("./storage/proxy.pickle", 'rb')
             self.storage = pickle.load(output_file)
             output_file.close()
-        except Exception as e:
-            self.logger.log(f"PROXY", "warning", "No previous state. New state initialize")
+        except Exception:            
+            self.logger.log("PROXY", "warning", "No previous state. New state initialize")
+            Path("./storage").mkdir(parents=True, exist_ok=True)
 
     def handle_storage(self):
-        output_file = open(f"./storage/proxy.ser", 'wb')
-        pickle.dump(self.storage, output_file, protocol=pickle.HIGHEST_PROTOCOL)
-        output_file.close()
+        with open('./storage/proxy.pickle', 'wb') as handle:
+            pickle.dump(self.storage, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     def handle_backend(self, msg):
         identity_msg = IdentityMessage(msg)
