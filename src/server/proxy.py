@@ -126,12 +126,12 @@ class Proxy:
     def handle_subs(self, msg):
         identity_msg = IdentityMessage(msg)
         if identity_msg.key == "SUB":
-            self.logger.log("PROXY", "warning", "Subscribe on topic {identity_msg.body} from client {identity_msg.sender_id}")
+            self.logger.log("PROXY", "warning", f"Subscribe on topic {identity_msg.body} from client {identity_msg.sender_id}")
             self.storage.add_topic(identity_msg.body)
             self.storage.subscribe(identity_msg.sender_id, identity_msg.body)
 
         elif identity_msg.key == "UNSUB":
-            self.logger.log("PROXY", "warning", "Unsubscribe on topic {identity_msg.body} from client {identity_msg.sender_id}")
+            self.logger.log("PROXY", "warning", f"Unsubscribe on topic {identity_msg.body} from client {identity_msg.sender_id}")
             self.storage.unsubscribe(identity_msg.sender_id, identity_msg.body)
             # TODO Check if no subscriber remains, delete topic and all messages
         else:

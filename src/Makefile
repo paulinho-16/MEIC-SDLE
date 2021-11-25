@@ -6,6 +6,9 @@ PYTHON = python.exe
 
 .PHONY: proxy publisher subscriber put get sub unsub clean
 
+RUN_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+$(eval $(RUN_ARGS):;@:)
+
 # Run Proxy
 proxy:
 	@$(PYTHON) proxy_run.py
@@ -20,19 +23,19 @@ subscriber:
 
 # Publish a new message to a given topic
 put:
-	@$(PYTHON) exec_command.py $(MAKECMDGOALS)
+	@$(PYTHON) exec_command.py $@ $(RUN_ARGS)
 
 # Get a message from a given topic
 get:
-	@$(PYTHON) exec_command.py $(MAKECMDGOALS)
+	@$(PYTHON) exec_command.py $@ $(RUN_ARGS)
 
 # Subscribe a new topic
 sub:
-	@$(PYTHON) exec_command.py $(MAKECMDGOALS)
+	@$(PYTHON) exec_command.py $@ $(RUN_ARGS)
 
 # Unsubscribe a given topic
 unsub:
-	@$(PYTHON) exec_command.py $(MAKECMDGOALS)
+	@$(PYTHON) exec_command.py $@ $(RUN_ARGS)
 
 # Remove generated folders and files
 clean:

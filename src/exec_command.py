@@ -27,8 +27,6 @@ if __name__ == '__main__':
 
     s = ServerProxy(f'http://{sys.argv[2]}:{sys.argv[3]}')
 
-    print(sys.argv)
-
     if sys.argv[1] == "put":
         topic = sys.argv[4]
         message = " ".join(sys.argv[5:])
