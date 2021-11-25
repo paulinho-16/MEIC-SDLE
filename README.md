@@ -16,7 +16,7 @@ Group members:
 1. Clone this repository:
    `git clone https://git.fe.up.pt/sdle/2021/t3/g13/proj1.git`
 
-2. In the `proj1` directory:
+2. In the `src` directory:
 
 For Windows:
 
