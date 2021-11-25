@@ -1,15 +1,9 @@
 import time
-import sys
-from random import randint
-from string import ascii_uppercase as uppercase
-from xmlrpc.server import SimpleXMLRPCServer
-from threading import Thread
-
 import zmq
+from xmlrpc.server import SimpleXMLRPCServer
 
-from zmq.devices import monitored_queue
-from random import randrange
-from common import ACKMessage, CompleteMessage
+from common import ACKMessage
+from common import CompleteMessage
 from common import Logger
 
 class Publisher:

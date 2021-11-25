@@ -1,6 +1,6 @@
-from xmlrpc.client import ServerProxy
-import ipaddress
 import sys
+import ipaddress
+from xmlrpc.client import ServerProxy
 
 def dogets(num):    
     for i in range(int(num)):

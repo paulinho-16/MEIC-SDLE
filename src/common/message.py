@@ -1,5 +1,4 @@
 import struct
-import zmq
 
 class ACKMessage(object):
     type_ack = None

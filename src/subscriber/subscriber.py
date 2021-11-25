@@ -1,7 +1,4 @@
 # Standard Library Imports
-import threading
-
-# Third Party Imports
 import pickle
 import time
 import zmq
@@ -50,14 +47,14 @@ class Subscriber:
 
     def __restore_state(self):
         try:
-            output_file = open(f"./storage/storage-{self.client_id}.ser", 'rb')
+            output_file = open(f"./storage/storage-{self.client_id}.pickle", 'rb')
             self.storage = pickle.load(output_file)
             output_file.close()
         except Exception as e:
             self.logger.log(f"SUBSCRIBER {self.client_id}", "warning", "No previous state. New state initialize")
 
     def __save_state(self):
-        output_file = open(f"./storage/storage-{self.client_id}.ser", 'wb')
+        output_file = open(f"./storage/storage-{self.client_id}.pickle", 'wb')
         pickle.dump(self.storage, output_file)
         output_file.close()
 
