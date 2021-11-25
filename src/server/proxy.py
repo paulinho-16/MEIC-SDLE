@@ -65,7 +65,6 @@ class Proxy:
             self.storage = pickle.load(output_file)
             output_file.close()
         except Exception as e:
-            print(e)
             self.logger.log(f"PROXY", "warning", "No previous state. New state initialize")
 
     def handle_storage(self):
@@ -80,8 +79,9 @@ class Proxy:
         if identity_msg.key == "GET":
             message_list = []
             topic_list_client = self.storage.get_topics(identity_msg.sender_id)
-            for topic in topic_list_client:
-                message_list += self.storage.get_message(topic, identity_msg.sequence)
+            for topic, id_when_sub in topic_list_client:
+                highest = max(id_when_sub, identity_msg.sequence)
+                message_list += self.storage.get_message(topic, highest)
 
             message_list = sorted(message_list, key=message_order)
 
@@ -95,6 +95,7 @@ class Proxy:
                 ack = ACKMessage("NACK", "No messages to receive")
                 self.backend.send(identity_msg.identity, zmq.SNDMORE)
                 ack.send(self.backend)
+        self.storage.state()
 
     def handle_frontend(self, msg):
         identity_msg = IdentityMessage(msg)
@@ -125,24 +126,28 @@ class Proxy:
             self.frontend.send(identity_msg.identity, zmq.SNDMORE)
             ack.send(self.frontend)
 
+        self.storage.state()
+
     def handle_subs(self, msg):
         identity_msg = IdentityMessage(msg)
         if identity_msg.key == "SUB":
-            self.logger.log("PROXY", "warning", "Subscribe on topic {identity_msg.body} from client {identity_msg.sender_id}")
+            self.logger.log("PROXY", "warning", f"Subscribe on topic {identity_msg.body} from client {identity_msg.sender_id}")
             self.storage.add_topic(identity_msg.body)
             self.storage.subscribe(identity_msg.sender_id, identity_msg.body)
 
         elif identity_msg.key == "UNSUB":
-            self.logger.log("PROXY", "warning", "Unsubscribe on topic {identity_msg.body} from client {identity_msg.sender_id}")
+            self.logger.log("PROXY", "warning", f"Unsubscribe on topic {identity_msg.body} from client {identity_msg.sender_id}")
             self.storage.unsubscribe(identity_msg.sender_id, identity_msg.body)
             # TODO Check if no subscriber remains, delete topic and all messages
         else:
             self.logger.log("PROXY", "warning", "Bad request on snapshot.")
+            self.storage.state()
             return None
 
-        ack = ACKMessage("ACK", "Success")
+        ack = ACKMessage("ACK", "Server received message.")
         self.snapshot.send(identity_msg.identity, zmq.SNDMORE)
         ack.send(self.snapshot)
+        self.storage.state()
 
     def start(self):
         try:
