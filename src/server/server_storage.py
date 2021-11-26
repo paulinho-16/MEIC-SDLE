@@ -29,7 +29,7 @@ class ServerStorage:
         topic_list = self.clients.get(client_id, [])
 
         for topic in topic_list:
-            if topic_id in topic: 
+            if topic_id in topic:
                 print(f"Error: Client {client_id} is already subscribed to topic {topic_id}", file=sys.stderr)
                 return None
 
@@ -59,9 +59,9 @@ class ServerStorage:
         return self.clients[client_id]
 
     def update_topics(self, topic_id):
-        for client in self.clients:
-            for topic in client:
-                if topic[0] == topic_id:
+        for _, client in self.clients.items():
+            for top_id, _ in client:
+                if top_id == topic_id:
                     return
 
         self.topics.pop(topic_id)
@@ -126,7 +126,7 @@ class ServerStorage:
         self.clients[client_id] = client
         
         min_last_rcv = sequence_number
-        for cl_id, client in self.clients.items():
+        for _, client in self.clients.items():
             for topic_id, last_msg_rcv in client:
                 if last_msg_rcv < min_last_rcv:
                     min_last_rcv = last_msg_rcv
