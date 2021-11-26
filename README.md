@@ -34,22 +34,22 @@ For Linux:
    `make proxy`
 
 4. Run a publisher:
-   `make publisher`
+   `make publisher [id] [ip] [port]`
 
 5. Run a subscriber:
-   `make subscriber`
+   `make subscriber [id] [ip] [port]`
 
 6. Publish a new message to a given topic
-   `make put [topic] [message] `
+   `make put [ip] [port] [topic] [message] `
 
 7. Receive nTimes messages
-   `make get [nTimes]`
+   `make get [ip] [port] [nTimes]`
 
 8. Subscribe a new topic:
-   `make sub [topic]`
+   `make sub [ip] [port] [topic]`
 
 9. Unsubscribe a given topic:
-   `make unsub [topic]`
+   `make unsub [ip] [port] [topic]`
 
 10. Clear all the output files:
    `make clean`
