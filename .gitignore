@@ -1,7 +1,10 @@
 # Generated files and folders
+.vscode/
 Project\ 1/storage.pickle
 Project\ 1/src/storage/
-.vscode/
+Project\ 2/storage/
+Project\ 2/key/
+Project\ 2/logger.log
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
